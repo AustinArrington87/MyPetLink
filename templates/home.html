@@ -90,7 +90,10 @@
                  alt="MyPetLink Logo" 
                  class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300">
         </a>
-        <a href="{{ url_for('profile') }}" class="text-gray-600 hover:text-gray-900 transition-colors duration-200">Pet Profile</a>
+        <a href="{{ url_for('profile') }}" 
+           class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center">
+            <span class="mr-1">🐾</span> Pet Profile
+        </a>
     </div>
 </div>
 
