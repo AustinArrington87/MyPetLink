@@ -569,30 +569,31 @@ def get_training_tips():
         if not species or not breed:
             return jsonify({'success': False, 'error': 'Species and breed are required'}), 400
 
-        # Create thread for GPT
+        # Create the prompt with cleaner formatting instructions
+        prompt = f"""Please provide comprehensive training and play tips for a {breed} {species}. 
+        Format your response in these sections:
+
+        Training Tips:
+        • Basic Training: Focus on essential commands and techniques
+        • Behavioral Tips: Address common challenges
+        • Training Methods: Highlight effective approaches
+
+        Exercise & Play:
+        • Exercise Needs: Daily requirements and activity levels
+        • Play Activities: Recommended games and toys
+        • Exercise Tips: Best practices for this breed
+
+        Enrichment Activities:
+        • Mental Stimulation: Puzzle and learning activities
+        • Environmental Enrichment: Setting up engaging spaces
+        • Social Enrichment: Interaction needs and tips"""
+
+        # Create thread and send to GPT
         thread = client.beta.threads.create()
-        
-        # Create the prompt
         message = client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
-            content=f"""Please provide comprehensive training and play tips for a {breed} {species}. 
-            Format your response in three sections:
-
-            1. Training Tips:
-            • Basic obedience and commands
-            • Common behavioral challenges
-            • Training methods that work best for this breed
-
-            2. Exercise & Play:
-            • Exercise requirements
-            • Recommended activities
-            • Play style preferences
-
-            3. Enrichment Activities:
-            • Mental stimulation ideas
-            • Interactive toys
-            • Breed-specific enrichment suggestions"""
+            content=prompt
         )
 
         # Run the assistant
