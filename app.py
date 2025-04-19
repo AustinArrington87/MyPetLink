@@ -569,24 +569,28 @@ def get_training_tips():
         if not species or not breed:
             return jsonify({'success': False, 'error': 'Species and breed are required'}), 400
 
-        # Create the prompt with cleaner formatting instructions
-        prompt = f"""Please provide comprehensive training and play tips for a {breed} {species}. 
-        Format your response in these sections:
+        # Create a more specific prompt
+        prompt = f"""As a veterinary expert, please provide detailed training and care tips for a {breed} {species}. 
+        If you're not familiar with this specific breed, provide general tips for {species} while incorporating any known traits of similar breeds.
+
+        Please format your response with these sections:
 
         Training Tips:
-        • Basic Training: Focus on essential commands and techniques
-        • Behavioral Tips: Address common challenges
-        • Training Methods: Highlight effective approaches
+        • Basic Training: Focus on essential commands and techniques specific to {breed}s
+        • Behavioral Tips: Common {breed} traits and how to manage them
+        • Training Methods: Most effective approaches for this breed
 
         Exercise & Play:
-        • Exercise Needs: Daily requirements and activity levels
-        • Play Activities: Recommended games and toys
-        • Exercise Tips: Best practices for this breed
+        • Exercise Needs: Daily requirements based on {breed} energy levels
+        • Play Activities: Best games and toys for this breed
+        • Exercise Tips: Special considerations for {breed}s
 
         Enrichment Activities:
-        • Mental Stimulation: Puzzle and learning activities
-        • Environmental Enrichment: Setting up engaging spaces
-        • Social Enrichment: Interaction needs and tips"""
+        • Mental Stimulation: Puzzle and learning activities suited for {breed}s
+        • Environmental Enrichment: Creating an engaging space
+        • Social Enrichment: Interaction needs and socialization tips
+
+        Please be specific to the breed when possible, and provide general {species} advice when breed-specific information is limited."""
 
         # Create thread and send to GPT
         thread = client.beta.threads.create()
