@@ -137,23 +137,23 @@ FOLLOW-UP ACTIONS
             elif section.startswith('FOLLOW-UP'):
                 followup = section
 
-        # Create chat session first
+        # Try to save to database, but don't fail if it errors
         try:
             conn = get_db_connection()
             if conn:
                 cur = conn.cursor()
                 
-                # Create a new chat session
+                # Create a new chat session with a default user_id
                 session_id = str(uuid.uuid4())
                 cur.execute("""
-                    INSERT INTO chat_sessions (id, created_at)
-                    VALUES (%s, %s)
+                    INSERT INTO chat_sessions (id, user_id, created_at)
+                    VALUES (%s, %s, %s)
                     RETURNING id
-                """, (session_id, datetime.now()))
+                """, (session_id, 1, datetime.now()))  # Using default user_id=1
                 
                 conn.commit()
                 
-                # Now store the analysis
+                # Store the analysis
                 cur.execute("""
                     INSERT INTO chat_messages 
                     (id, session_id, role, content, timestamp, request_data, response_data)
@@ -178,6 +178,7 @@ FOLLOW-UP ACTIONS
                 
         except Exception as db_error:
             logger.error(f"Database error: {str(db_error)}")
+            # Continue even if database save fails
 
         return {
             'success': True,
