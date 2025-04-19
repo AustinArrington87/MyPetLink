@@ -579,10 +579,46 @@ def analyze_poop():
 def get_breeds(pet_type):
     # Add your breed lists here
     breeds = {
-        'dog': ['Labrador Retriever', 'German Shepherd', 'Golden Retriever', 'French Bulldog', 'Bulldog'],
-        'cat': ['Persian', 'Maine Coon', 'Siamese', 'British Shorthair', 'Ragdoll'],
-        'bird': ['Parakeet', 'Cockatiel', 'Canary', 'Cockatoo', 'African Grey'],
-        'reptile': ['Bearded Dragon', 'Ball Python', 'Leopard Gecko', 'Corn Snake', 'Green Iguana']
+        'dog': [
+        'Labrador Retriever', 'German Shepherd', 'Golden Retriever', 'French Bulldog', 'Bulldog',
+        'Poodle', 'Yorkshire Terrier', 'Boxer', 'Dachshund', 'Siberian Husky',
+        'Great Dane', 'Doberman Pinscher', 'Australian Shepherd', 'Shih Tzu', 'Chihuahua',
+        'Rottweiler', 'Cocker Spaniel', 'Boston Terrier', 'Miniature Schnauzer', 'Cavalier King Charles Spaniel',
+        'Basset Hound', 'Border Collie', 'Akita', 'Maltese', 'Bernese Mountain Dog',
+        'Newfoundland', 'Weimaraner', 'English Springer Spaniel', 'Papillon', 'St. Bernard',
+        'West Highland White Terrier', 'Rhodesian Ridgeback', 'Pomeranian', 'Alaskan Malamute', 'Whippet'
+        ],
+        'cat': ['Persian', 'Maine Coon', 'Siamese', 'British Shorthair', 'Ragdoll',
+        'Sphynx', 'Bengal', 'Scottish Fold', 'Abyssinian', 'Russian Blue',
+        'Norwegian Forest Cat', 'Savannah', 'Turkish Angora', 'Birman', 'Oriental Shorthair',
+        'American Shorthair', 'Tonkinese', 'Himalayan', 'Chartreux', 'Devon Rex'
+        ],
+        'bird': ['Parakeet', 'Cockatiel', 'Canary', 'Cockatoo', 'African Grey',
+        'Macaw', 'Lovebird', 'Budgerigar', 'Finch', 'Eclectus Parrot',
+        'Amazon Parrot', 'Conure', 'Quaker Parrot', 'Lorikeet', 'Parrotlet',
+        'Indian Ringneck', 'Pionus Parrot', 'Green Cheek Conure', 'Bourke’s Parrot', 'Senegal Parrot'
+        ],
+        'reptile': ['Bearded Dragon', 'Ball Python', 'Leopard Gecko', 'Corn Snake', 'Green Iguana',
+        'Red-Eared Slider', 'Crested Gecko', 'Blue-Tongue Skink', 'King Snake', 'Chameleon',
+        'Uromastyx', 'Tokay Gecko', 'Milk Snake', 'Tegu', 'Savannah Monitor',
+        'Boa Constrictor', 'Chinese Water Dragon', 'Anole', 'Garter Snake', 'Sulcata Tortoise'
+        ],
+        'fish': [
+        'Betta', 'Goldfish', 'Angelfish', 'Guppy', 'Neon Tetra',
+        'Oscar', 'Koi', 'Discus', 'Molly', 'Platy',
+        'Swordtail', 'Clownfish', 'Zebra Danio', 'Plecostomus', 'Cichlid'
+        ],
+        'rabbit': [
+        'Holland Lop', 'Netherland Dwarf', 'Flemish Giant', 'Mini Rex', 'Lionhead',
+        'English Lop', 'American Fuzzy Lop', 'Harlequin', 'English Angora', 'Silver Marten'
+        ],
+        'ferret': [
+        'Standard Ferret', 'Albino Ferret', 'Black Sable Ferret', 'Champagne Ferret', 'Cinnamon Ferret'
+        ],
+        'farm animal': [
+        'Goat', 'Sheep', 'Pig', 'Cow', 'Horse',
+        'Donkey', 'Alpaca', 'Llama', 'Chicken', 'Duck'
+        ]
     }
     return jsonify(breeds.get(pet_type, []))
 
