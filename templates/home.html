@@ -59,10 +59,38 @@
         </div>
     </div>
 
+    <!-- After Analysis Results section -->
+    <div id="suggestedPrompts" class="mt-4 flex flex-wrap gap-2">
+        <!-- Prompts will be dynamically populated here -->
+    </div>
+
+    <!-- Chat section -->
+    <div class="bg-white shadow-md rounded-lg p-6 mt-6">
+        <div class="flex flex-col h-[400px]">
+            <div id="chat-messages" class="flex-1 overflow-y-auto mb-4 space-y-4">
+                <!-- Messages will appear here -->
+            </div>
+            
+            <div class="border-t pt-4">
+                <form id="chat-form" class="flex gap-2">
+                    <input type="text" 
+                           id="chat-input" 
+                           class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Ask about your pet's health or analysis...">
+                    <button type="submit" 
+                            class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                        Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading State -->
     <div id="loadingState" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-lg shadow-xl">
-            <p class="text-gray-600">Analyzing documents...</p>
+        <div class="bg-white p-4 rounded-lg shadow-xl text-center">
+            <img src="/static/img/GIFs/cleo.gif" alt="Loading..." class="mx-auto h-24 w-24 object-contain mb-2">
+            <p class="text-gray-600 text-sm">Analyzing documents...</p>
         </div>
     </div>
 </div>
