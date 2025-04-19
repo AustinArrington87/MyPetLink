@@ -488,4 +488,16 @@ async function useSuggestedPrompt(prompt) {
     } finally {
         hideLoading();
     }
+}
+
+// Add this with the other utility functions
+function formatSection(content) {
+    if (!content) return '';
+    
+    return content
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n•/g, '<br>•')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium">$1</strong>')
+        .replace(/^(Training Tips:|Exercise & Play:|Enrichment Activities:)/gm, 
+            '<h4 class="text-lg font-medium mb-2">$1</h4>');
 } 
