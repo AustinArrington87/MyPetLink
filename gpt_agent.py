@@ -143,87 +143,51 @@ FOLLOW-UP ACTIONS
         messages = client.beta.threads.messages.list(thread_id=thread.id)
         analysis = messages.data[0].content[0].text.value
 
-        # Extract sections
+        # Extract sections more robustly
         sections = analysis.split('\n\n')
         synopsis = ""
         insights = ""
         followup = ""
 
+        current_section = None
         for section in sections:
-            if section.startswith('SYNOPSIS'):
-                synopsis = section
-            elif section.startswith('INSIGHTS'):
-                insights = section
-            elif section.startswith('FOLLOW-UP'):
-                followup = section
+            section = section.strip()
+            if 'SYNOPSIS' in section:
+                current_section = 'synopsis'
+                synopsis = section.replace('SYNOPSIS', '').strip()
+            elif 'INSIGHTS AND ANOMALIES' in section:
+                current_section = 'insights'
+                insights = section.replace('INSIGHTS AND ANOMALIES', '').strip()
+            elif 'FOLLOW-UP ACTIONS' in section:
+                current_section = 'followup'
+                followup = section.replace('FOLLOW-UP ACTIONS', '').strip()
+            elif current_section and section:
+                # Append additional content to the current section
+                if current_section == 'synopsis':
+                    synopsis += "\n" + section
+                elif current_section == 'insights':
+                    insights += "\n" + section
+                elif current_section == 'followup':
+                    followup += "\n" + section
 
-        # Try to save to database, but don't fail if it errors
-        try:
-            conn = get_db_connection()
-            if conn:
-                cur = conn.cursor()
-                
-                session_id = str(uuid.uuid4())
-                default_user_id = str(uuid.uuid4())
-                
-                cur.execute("""
-                    INSERT INTO chat_sessions 
-                    (id, user_id, created_at, prompt_template_id)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id
-                """, (
-                    session_id, 
-                    default_user_id, 
-                    datetime.now(),
-                    pet_record_prompt_id
-                ))
-                
-                conn.commit()
-                
-                # Store the analysis
-                message_id = str(uuid.uuid4())
-                cur.execute("""
-                    INSERT INTO chat_messages 
-                    (id, session_id, role, content, timestamp, request_data, response_data)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    message_id,
-                    session_id,
-                    'system',
-                    'Veterinary Document Analysis',
-                    datetime.now(),
-                    json.dumps({'files': file_paths}),
-                    json.dumps({
-                        'synopsis': synopsis,
-                        'insights_anomalies': insights,
-                        'followup_actions': followup
-                    })
-                ))
-
-                conn.commit()
-                cur.close()
-                conn.close()
-                
-        except Exception as db_error:
-            logger.error(f"Database error: {str(db_error)}")
-            # Continue even if database save fails
-
-        # Return the analysis results
-        if not synopsis and not insights and not followup:
+        # Skip database operations entirely
+        
+        # Return the analysis results if we have content
+        if synopsis or insights or followup:
+            return {
+                'success': True,
+                'result': {
+                    'synopsis': synopsis,
+                    'insights_anomalies': insights,
+                    'followup_actions': followup
+                }
+            }
+        else:
             logger.error("No content in analysis sections")
             return {
                 'success': False,
                 'error': 'Failed to extract content from analysis'
             }
-
-        return {
-            'success': True,
-            'result': {
-                'synopsis': synopsis,
-                'insights_anomalies': insights,
-                'followup_actions': followup
-            }
-        }
 
     except Exception as e:
         logger.error(f"Analysis error: {e}")
