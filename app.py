@@ -142,23 +142,31 @@ def upload_file():
 
 @app.route('/profile')
 def profile():
-    # Get user name from session or use default
-    user_name = session.get('user_name', 'Michelle G')
-    first_name, last_name = user_name.split(' ', 1) if ' ' in user_name else (user_name, '')
-    
-    # Mock data for demonstration
-    user_data = {
-        'name': {'first': first_name, 'last': last_name},
-        'vitals': {
-            'blood_pressure': '120/80',
-            'pulse_rate': '72',
-            'height': "5'10\"",
-            'weight': '150',
-            'bmi': '21.5',
-            'respiratory_rate': '16'
+    # Get pet profile from session or use empty dict
+    pet_data = session.get('pet_profile', {})
+    return render_template('profile.html', pet=pet_data)
+
+@app.route('/update_pet_profile', methods=['POST'])
+def update_pet_profile():
+    try:
+        data = request.json
+        
+        # Store in session for now (can add database storage later)
+        session['pet_profile'] = {
+            'name': data.get('pet_name'),
+            'species': data.get('species'),
+            'breed': data.get('breed'),
+            'age': data.get('age'),
+            'weight': data.get('weight'),
+            'health_conditions': data.get('health_conditions'),
+            'last_checkup': data.get('last_checkup'),
+            'state': data.get('state')
         }
-    }
-    return render_template('profile.html', user=user_data)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Profile update error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/update_profile', methods=['POST'])
 def update_profile():
@@ -257,127 +265,102 @@ def export_pdf():
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
-        data = request.get_json()
-        user_message = data.get('message', '')
+        data = request.json
+        user_message = data.get('message')
         
-        # Get intake form context if available
-        intake_context = ""
-        if session and 'intake_form' in session:
-            intake_data = session.get('intake_form', {})
-            medical_context = []
-            
-            # Medical History (non-PII only)
-            if intake_data.get('takingMedications') == 'yes' and intake_data.get('medications'):
-                medical_context.append(f"Current Medications: {intake_data['medications']}")
-            
-            if intake_data.get('chronicConditions'):
-                conditions = intake_data['chronicConditions']
-                if isinstance(conditions, list):
-                    medical_context.append(f"Chronic Conditions: {', '.join(conditions)}")
-                else:
-                    medical_context.append(f"Chronic Condition: {conditions}")
-            
-            # Current Health
-            if intake_data.get('primaryReason'):
-                medical_context.append(f"Current Health Concern: {intake_data['primaryReason']}")
-            
-            if intake_data.get('painLevel'):
-                medical_context.append(f"Pain Level: {intake_data['painLevel']}/10")
-            
-            # Lifestyle
-            if intake_data.get('exercise'):
-                medical_context.append(f"Exercise Frequency: {intake_data['exercise']}")
-            
-            if intake_data.get('stressLevel'):
-                medical_context.append(f"Stress Level: {intake_data['stressLevel']}")
-            
-            if medical_context:
-                intake_context = "\nPatient Background:\n• " + "\n• ".join(medical_context) + "\n\n"
+        if not user_message:
+            return jsonify({'success': False, 'error': 'No message provided'}), 400
 
-        # Update system message to include medical error detection
-        system_message = """You are an AI Health Assistant. Use the following patient background information to provide more personalized responses.
-{intake_context}
-
-CRITICAL INSTRUCTIONS:
-1. Always review medications listed in the patient background
-2. Flag any potential connections between medications and reported symptoms
-3. Note if medications like Xanax could be relevant to symptoms
-4. Recommend consulting a healthcare provider about medication side effects
-5. Be especially attentive to mental health medications and their effects
-6. IMPORTANT: If you detect any potential medical errors (such as outdated prescriptions, 
-   contraindicated medications, or concerning symptoms), include "[MEDICAL_ERROR_RISK]" 
-   at the start of your response.
-
-FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
-
-I understand your concern about [symptom]. Let me address this while considering your current medications.
-
-
-MEDICATION CONSIDERATIONS
-
-- Note any medication effects relevant to the symptoms
-
-- Highlight potential medication interactions or side effects
-
-
-RECOMMENDED STEPS
-
-- First recommendation with clear explanation
-
-- Second recommendation with clear explanation
-
-
-IMPORTANT REMINDERS
-
-- Key safety points about medications and symptoms
-
-- When to consult healthcare providers
-
-I hope this helps. Please discuss any medication concerns with your healthcare provider.
-
-FORMATTING RULES:
-- Use UPPERCASE for section headers
-- Leave TWO blank lines between sections
-- Use simple dashes (-) for bullet points
-- Never use **, ##, or ### characters
-- Keep paragraphs short and well-spaced
-- Use plain text only, no special formatting"""
-
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": user_message}
-        ]
-
-        # Get chat history from session and add to messages
-        chat_history = session.get('chat_history', [])
-        messages.extend(chat_history)
-
-        # Call OpenAI API
-        response = client.chat.completions.create(
-            model="gpt-4-turbo-preview",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=500
+        # Create a thread for the chat
+        thread = client.beta.threads.create()
+        
+        # Add the user's message
+        message = client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=user_message
         )
 
+        # Run the assistant
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id="asst_bYxIi1SefCRrdHSHfByUtNjd"
+        )
+
+        # Wait for completion
+        while True:
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+            if run.status == 'completed':
+                break
+            elif run.status == 'failed':
+                raise Exception("Chat response failed")
+
         # Get the assistant's response
-        assistant_response = response.choices[0].message.content
+        messages = client.beta.threads.messages.list(thread_id=thread.id)
+        response = messages.data[0].content[0].text.value
 
         # Check for medical error risk
-        medical_error_risk = '[MEDICAL_ERROR_RISK]' in assistant_response
+        medical_error_risk = '[MEDICAL_ERROR_RISK]' in response
         # Remove the flag from the displayed response
-        assistant_response = assistant_response.replace('[MEDICAL_ERROR_RISK]', '').strip()
+        response = response.replace('[MEDICAL_ERROR_RISK]', '').strip()
 
-        # Update chat history in session
-        chat_history.extend([
-            {"role": "user", "content": user_message},
-            {"role": "assistant", "content": assistant_response}
-        ])
-        session['chat_history'] = chat_history
+        try:
+            # Store chat in database with default user_id as UUID
+            conn = get_db_connection()
+            if conn:
+                cur = conn.cursor()
+                
+                # Create a new chat session with default UUID user_id
+                session_id = str(uuid.uuid4())
+                default_user_id = str(uuid.uuid4())  # Generate UUID for user_id
+                
+                cur.execute("""
+                    INSERT INTO chat_sessions (id, user_id, created_at)
+                    VALUES (%s, %s, %s)
+                    RETURNING id
+                """, (session_id, default_user_id, datetime.now()))
+                
+                conn.commit()
+                
+                # Store the messages
+                cur.execute("""
+                    INSERT INTO chat_messages 
+                    (id, session_id, role, content, timestamp)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (
+                    str(uuid.uuid4()),
+                    session_id,
+                    'user',
+                    user_message,
+                    datetime.now()
+                ))
+
+                cur.execute("""
+                    INSERT INTO chat_messages 
+                    (id, session_id, role, content, timestamp)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (
+                    str(uuid.uuid4()),
+                    session_id,
+                    'assistant',
+                    response,
+                    datetime.now()
+                ))
+
+                conn.commit()
+                cur.close()
+                conn.close()
+                
+        except Exception as db_error:
+            logger.error(f"Database error: {str(db_error)}")
+            # Continue even if database save fails
 
         return jsonify({
             "success": True,
-            "response": assistant_response,
+            "response": response,
             "medical_error_risk": medical_error_risk
         })
 
@@ -580,44 +563,47 @@ def get_breeds(pet_type):
     # Add your breed lists here
     breeds = {
         'dog': [
-        'Labrador Retriever', 'German Shepherd', 'Golden Retriever', 'French Bulldog', 'Bulldog',
-        'Poodle', 'Yorkshire Terrier', 'Boxer', 'Dachshund', 'Siberian Husky',
-        'Great Dane', 'Doberman Pinscher', 'Australian Shepherd', 'Shih Tzu', 'Chihuahua',
-        'Rottweiler', 'Cocker Spaniel', 'Boston Terrier', 'Miniature Schnauzer', 'Cavalier King Charles Spaniel',
-        'Basset Hound', 'Border Collie', 'Akita', 'Maltese', 'Bernese Mountain Dog',
-        'Newfoundland', 'Weimaraner', 'English Springer Spaniel', 'Papillon', 'St. Bernard',
-        'West Highland White Terrier', 'Rhodesian Ridgeback', 'Pomeranian', 'Alaskan Malamute', 'Whippet'
+            'Labrador Retriever', 'German Shepherd', 'Golden Retriever', 'French Bulldog', 'Bulldog',
+            'Poodle', 'Yorkshire Terrier', 'Boxer', 'Dachshund', 'Siberian Husky',
+            'Great Dane', 'Doberman Pinscher', 'Australian Shepherd', 'Shih Tzu', 'Chihuahua',
+            'Rottweiler', 'Cocker Spaniel', 'Boston Terrier', 'Miniature Schnauzer', 'Cavalier King Charles Spaniel',
+            'Basset Hound', 'Border Collie', 'Akita', 'Maltese', 'Bernese Mountain Dog',
+            'Newfoundland', 'Weimaraner', 'English Springer Spaniel', 'Papillon', 'St. Bernard',
+            'West Highland White Terrier', 'Rhodesian Ridgeback', 'Pomeranian', 'Alaskan Malamute', 'Whippet'
         ],
-        'cat': ['Persian', 'Maine Coon', 'Siamese', 'British Shorthair', 'Ragdoll',
-        'Sphynx', 'Bengal', 'Scottish Fold', 'Abyssinian', 'Russian Blue',
-        'Norwegian Forest Cat', 'Savannah', 'Turkish Angora', 'Birman', 'Oriental Shorthair',
-        'American Shorthair', 'Tonkinese', 'Himalayan', 'Chartreux', 'Devon Rex'
+        'cat': [
+            'Persian', 'Maine Coon', 'Siamese', 'British Shorthair', 'Ragdoll',
+            'Sphynx', 'Bengal', 'Scottish Fold', 'Abyssinian', 'Russian Blue',
+            'Norwegian Forest Cat', 'Savannah', 'Turkish Angora', 'Birman', 'Oriental Shorthair',
+            'American Shorthair', 'Tonkinese', 'Himalayan', 'Chartreux', 'Devon Rex'
         ],
-        'bird': ['Parakeet', 'Cockatiel', 'Canary', 'Cockatoo', 'African Grey',
-        'Macaw', 'Lovebird', 'Budgerigar', 'Finch', 'Eclectus Parrot',
-        'Amazon Parrot', 'Conure', 'Quaker Parrot', 'Lorikeet', 'Parrotlet',
-        'Indian Ringneck', 'Pionus Parrot', 'Green Cheek Conure', 'Bourke’s Parrot', 'Senegal Parrot'
+        'bird': [
+            'Parakeet', 'Cockatiel', 'Canary', 'Cockatoo', 'African Grey',
+            'Macaw', 'Lovebird', 'Budgerigar', 'Finch', 'Eclectus Parrot',
+            'Amazon Parrot', 'Conure', 'Quaker Parrot', 'Lorikeet', 'Parrotlet',
+            'Indian Ringneck', 'Pionus Parrot', 'Green Cheek Conure', "Bourke's Parrot", 'Senegal Parrot'
         ],
-        'reptile': ['Bearded Dragon', 'Ball Python', 'Leopard Gecko', 'Corn Snake', 'Green Iguana',
-        'Red-Eared Slider', 'Crested Gecko', 'Blue-Tongue Skink', 'King Snake', 'Chameleon',
-        'Uromastyx', 'Tokay Gecko', 'Milk Snake', 'Tegu', 'Savannah Monitor',
-        'Boa Constrictor', 'Chinese Water Dragon', 'Anole', 'Garter Snake', 'Sulcata Tortoise'
+        'reptile': [
+            'Bearded Dragon', 'Ball Python', 'Leopard Gecko', 'Corn Snake', 'Green Iguana',
+            'Red-Eared Slider', 'Crested Gecko', 'Blue-Tongue Skink', 'King Snake', 'Chameleon',
+            'Uromastyx', 'Tokay Gecko', 'Milk Snake', 'Tegu', 'Savannah Monitor',
+            'Boa Constrictor', 'Chinese Water Dragon', 'Anole', 'Garter Snake', 'Sulcata Tortoise'
         ],
         'fish': [
-        'Betta', 'Goldfish', 'Angelfish', 'Guppy', 'Neon Tetra',
-        'Oscar', 'Koi', 'Discus', 'Molly', 'Platy',
-        'Swordtail', 'Clownfish', 'Zebra Danio', 'Plecostomus', 'Cichlid'
+            'Betta', 'Goldfish', 'Angelfish', 'Guppy', 'Neon Tetra',
+            'Oscar', 'Koi', 'Discus', 'Molly', 'Platy',
+            'Swordtail', 'Clownfish', 'Zebra Danio', 'Plecostomus', 'Cichlid'
         ],
         'rabbit': [
-        'Holland Lop', 'Netherland Dwarf', 'Flemish Giant', 'Mini Rex', 'Lionhead',
-        'English Lop', 'American Fuzzy Lop', 'Harlequin', 'English Angora', 'Silver Marten'
+            'Holland Lop', 'Netherland Dwarf', 'Flemish Giant', 'Mini Rex', 'Lionhead',
+            'English Lop', 'American Fuzzy Lop', 'Harlequin', 'English Angora', 'Silver Marten'
         ],
         'ferret': [
-        'Standard Ferret', 'Albino Ferret', 'Black Sable Ferret', 'Champagne Ferret', 'Cinnamon Ferret'
+            'Standard Ferret', 'Albino Ferret', 'Black Sable Ferret', 'Champagne Ferret', 'Cinnamon Ferret'
         ],
         'farm animal': [
-        'Goat', 'Sheep', 'Pig', 'Cow', 'Horse',
-        'Donkey', 'Alpaca', 'Llama', 'Chicken', 'Duck'
+            'Goat', 'Sheep', 'Pig', 'Cow', 'Horse',
+            'Donkey', 'Alpaca', 'Llama', 'Chicken', 'Duck'
         ]
     }
     return jsonify(breeds.get(pet_type, []))
