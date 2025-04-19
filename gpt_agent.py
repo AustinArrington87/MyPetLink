@@ -148,20 +148,27 @@ FOLLOW-UP ACTIONS
                 default_user_id = str(uuid.uuid4())  # Generate UUID for user_id
                 
                 cur.execute("""
-                    INSERT INTO chat_sessions (id, user_id, created_at)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO chat_sessions (id, user_id, created_at, pet_id, provider_id)
+                    VALUES (%s, %s, %s, %s, %s)
                     RETURNING id
-                """, (session_id, default_user_id, datetime.now()))  # Use UUID instead of integer
+                """, (
+                    session_id, 
+                    default_user_id, 
+                    datetime.now(),
+                    default_user_id,  # Using same UUID for pet_id
+                    default_user_id   # Using same UUID for provider_id
+                ))
                 
                 conn.commit()
                 
                 # Store the analysis
+                message_id = str(uuid.uuid4())
                 cur.execute("""
                     INSERT INTO chat_messages 
                     (id, session_id, role, content, timestamp, request_data, response_data)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """, (
-                    str(uuid.uuid4()),
+                    message_id,
                     session_id,
                     'system',
                     'Veterinary Document Analysis',
@@ -182,7 +189,14 @@ FOLLOW-UP ACTIONS
             logger.error(f"Database error: {str(db_error)}")
             # Continue even if database save fails
 
-        # Always return the analysis results, even if database save fails
+        # Return the analysis results
+        if not synopsis and not insights and not followup:
+            logger.error("No content in analysis sections")
+            return {
+                'success': False,
+                'error': 'Failed to extract content from analysis'
+            }
+
         return {
             'success': True,
             'result': {
