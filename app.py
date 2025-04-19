@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify, session, url_for, se
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
-from gpt_agent import analyze_health_records
+from gpt_agent import analyze_health_records, analyze_poop_image
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -22,6 +22,8 @@ from PIL import Image
 import io
 import time
 import pyheif
+import asyncio
+from functools import partial
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -271,6 +273,9 @@ def chat():
         if not user_message:
             return jsonify({'success': False, 'error': 'No message provided'}), 400
 
+        # Get the default health chat prompt template ID
+        default_prompt_id = '3c135563-13cd-452b-85a7-678209c961cb'  # Health Chat Default
+
         # Create a thread for the chat
         thread = client.beta.threads.create()
         
@@ -302,26 +307,20 @@ def chat():
         messages = client.beta.threads.messages.list(thread_id=thread.id)
         response = messages.data[0].content[0].text.value
 
-        # Check for medical error risk
-        medical_error_risk = '[MEDICAL_ERROR_RISK]' in response
-        # Remove the flag from the displayed response
-        response = response.replace('[MEDICAL_ERROR_RISK]', '').strip()
-
         try:
-            # Store chat in database with default user_id as UUID
             conn = get_db_connection()
             if conn:
                 cur = conn.cursor()
                 
-                # Create a new chat session with default UUID user_id
                 session_id = str(uuid.uuid4())
-                default_user_id = str(uuid.uuid4())  # Generate UUID for user_id
+                default_user_id = str(uuid.uuid4())
                 
                 cur.execute("""
-                    INSERT INTO chat_sessions (id, user_id, created_at)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO chat_sessions 
+                    (id, user_id, created_at, prompt_template_id, provider) 
+                    VALUES (%s, %s, %s, %s, NULL)
                     RETURNING id
-                """, (session_id, default_user_id, datetime.now()))
+                """, (session_id, default_user_id, datetime.now(), default_prompt_id))
                 
                 conn.commit()
                 
@@ -360,8 +359,7 @@ def chat():
 
         return jsonify({
             "success": True,
-            "response": response,
-            "medical_error_risk": medical_error_risk
+            "response": response
         })
 
     except Exception as e:
@@ -475,88 +473,41 @@ def get_provider_url():
         print(f"Error getting provider URL: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/analyze-poop', methods=['POST'])
-def analyze_poop():
+@app.route('/analyze_poop', methods=['POST'])
+async def analyze_poop():
     try:
-        logger.info("Starting poop analysis")
         if 'image' not in request.files:
-            logger.error("No image file in request")
-            return jsonify({'error': 'No image uploaded'}), 400
-            
+            return jsonify({'success': False, 'error': 'No image uploaded'})
+
         image = request.files['image']
-        logger.info(f"Received image: {image.filename}")
-        
-        # Read image data
+        if not image.filename:
+            return jsonify({'success': False, 'error': 'No image selected'})
+
+        # Save the image temporarily
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(image.filename))
+        image.save(temp_path)
+
         try:
-            image_data = image.read()
-            logger.info(f"Successfully read image data, size: {len(image_data)} bytes")
-        except Exception as e:
-            logger.error(f"Error reading image data: {str(e)}")
-            return jsonify({'error': 'Error reading image file'}), 400
-        
-        # Create a thread for the analysis
-        try:
-            thread = client.beta.threads.create()
-            logger.info(f"Created thread: {thread.id}")
+            # Run the analysis in an async context
+            loop = asyncio.get_event_loop()
+            analysis = await analyze_poop_image(temp_path)
             
-            # Upload the image
-            image_file = client.files.create(
-                file=io.BytesIO(image_data),
-                purpose='assistants'
-            )
-            logger.info(f"Uploaded image to OpenAI: {image_file.id}")
-            
-            # Create a message with the image
-            message = client.beta.threads.messages.create(
-                thread_id=thread.id,
-                role="user",
-                content=[{
-                    "type": "text",
-                    "text": "Please analyze this pet stool sample image for any health concerns. Consider color, consistency, and any visible abnormalities."
-                }, {
-                    "type": "image_file",
-                    "file_id": image_file.id
-                }]
-            )
-            logger.info("Created message with image")
-            
-            # Run the assistant
-            run = client.beta.threads.runs.create(
-                thread_id=thread.id,
-                assistant_id="asst_bYxIi1SefCRrdHSHfByUtNjd"
-            )
-            logger.info("Started assistant run")
-            
-            # Wait for completion
-            while run.status != 'completed':
-                run = client.beta.threads.runs.retrieve(
-                    thread_id=thread.id,
-                    run_id=run.id
-                )
-                if run.status == 'failed':
-                    logger.error(f"Run failed: {run.last_error}")
-                    raise Exception("Analysis failed")
-                time.sleep(1)
-            
-            logger.info("Analysis completed")
-            
-            # Get the assistant's response
-            messages = client.beta.threads.messages.list(thread_id=thread.id)
-            analysis = messages.data[0].content[0].text.value if hasattr(messages.data[0].content[0].text, 'value') else str(messages.data[0].content[0].text)
-            
-            logger.info("Successfully retrieved analysis")
             return jsonify({
                 'success': True,
-                'analysis': analysis
+                'result': {
+                    'summary': analysis.get('summary', ''),
+                    'concerns': analysis.get('concerns', ''),
+                    'recommendations': analysis.get('recommendations', '')
+                }
             })
-            
-        except Exception as e:
-            logger.error(f"OpenAI API error: {str(e)}")
-            raise
-            
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
     except Exception as e:
-        logger.error(f"Poop analysis error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logger.error(f"Error analyzing poop image: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/breeds/<pet_type>')
 def get_breeds(pet_type):
@@ -609,4 +560,4 @@ def get_breeds(pet_type):
     return jsonify(breeds.get(pet_type, []))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5001, use_reloader=True)
