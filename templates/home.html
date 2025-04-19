@@ -145,6 +145,41 @@
         </div>
     </div>
 
+    <!-- Add this after the poop analyzer section -->
+    <div class="analysis-card rounded-2xl p-6 shadow-lg mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-purple-800 flex items-center">
+            <span class="text-2xl mr-2">🎾</span> Breed-Specific Training & Play Tips
+        </h2>
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Species</label>
+                    <select id="training-species" 
+                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <option value="">Select Species</option>
+                        <option value="dog">Dog</option>
+                        <option value="cat">Cat</option>
+                        <option value="bird">Bird</option>
+                        <option value="reptile">Reptile</option>
+                        <option value="rabbit">Rabbit</option>
+                        <option value="ferret">Ferret</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Breed</label>
+                    <select id="training-breed" 
+                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <option value="">Select Species First</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="getTrainingTips()"
+                    class="w-full bg-purple-500 text-white px-6 py-3 rounded-full hover:bg-purple-600 transform transition-all hover:scale-105 shadow-md">
+                Get Training & Play Tips
+            </button>
+        </div>
+    </div>
+
     <!-- Analysis Results -->
     <div id="analysisResult" class="bg-white rounded-2xl p-6 shadow-lg mt-6 hidden">
         <h2 class="text-xl font-semibold mb-4 text-blue-800">Analysis Results</h2>
@@ -173,6 +208,25 @@
             </div>
             <div class="bg-blue-50 p-4 rounded-xl">
                 <div id="poopRecommendations"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this for training tips results -->
+    <div id="trainingTipsResult" class="bg-white rounded-2xl p-6 shadow-lg mt-6 hidden">
+        <h2 class="text-xl font-semibold mb-4 text-purple-800">Training & Play Tips</h2>
+        <div class="space-y-4">
+            <div class="bg-purple-50 p-4 rounded-xl">
+                <h3 class="font-medium text-lg mb-2">Training Tips</h3>
+                <div id="trainingTips"></div>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-xl">
+                <h3 class="font-medium text-lg mb-2">Exercise & Play</h3>
+                <div id="playTips"></div>
+            </div>
+            <div class="bg-green-50 p-4 rounded-xl">
+                <h3 class="font-medium text-lg mb-2">Enrichment Activities</h3>
+                <div id="enrichmentTips"></div>
             </div>
         </div>
     </div>
