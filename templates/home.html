@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}MyPetLink - Pet Health Analysis{% endblock %}
+
+{% block content %}
+<div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+        <a href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='img/pet_logo_text.png') }}" 
+                 alt="MyPetLink Logo" 
+                 class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300">
+        </a>
+        <div class="flex items-center gap-6">
+            <a href="{{ url_for('profile') }}" class="text-gray-600 hover:text-gray-900 transition-colors duration-200">Pet Profile</a>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-4xl mx-auto mt-20">
+    <!-- Welcome Message -->
+    <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+        <h1 class="text-2xl font-bold mb-4">Welcome, {{ user_name }}!</h1>
+        <p class="text-gray-600">
+            Analyze your pet's health records, check their poop health, or get breed-specific training tips.
+        </p>
+    </div>
+
+    <!-- Vet Record Analysis -->
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Analyze Veterinary Records</h2>
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center" id="dropZone">
+            <input type="file" 
+                   id="fileInput" 
+                   multiple 
+                   class="hidden" 
+                   accept=".pdf,.png,.jpg,.jpeg,.txt">
+            <button type="button" 
+                    onclick="document.getElementById('fileInput').click()" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                + Add Documents
+            </button>
+            <p class="text-gray-500 mt-2">Upload vet records, lab results, or vaccination records</p>
+        </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div id="analysisResult" class="bg-white shadow-md rounded-lg p-6 mt-6 hidden">
+        <h2 class="text-xl font-semibold mb-4">Analysis Results</h2>
+        <div class="space-y-4">
+            <div class="bg-blue-50 p-4 rounded">
+                <div id="synopsis"></div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div id="insights-anomalies"></div>
+            </div>
+            <div class="bg-green-50 p-4 rounded">
+                <div id="followup-actions"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-xl">
+            <p class="text-gray-600">Analyzing documents...</p>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/pet_app.js"></script>
+{% endblock %}

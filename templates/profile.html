@@ -1,0 +1,812 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+        <a href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='img/MHL_logo.png') }}" 
+                 alt="MyHealthLink Logo" 
+                 class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300">
+        </a>
+        <a href="{{ url_for('profile') }}" class="text-gray-600 hover:text-gray-900 transition-colors duration-200">Profile</a>
+    </div>
+</div>
+
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8">Profile</h1>
+    
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Basic Info</h2>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">First Name</label>
+                <input type="text" id="firstName" value="{{ user.name.first }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Last Name</label>
+                <input type="text" id="lastName" value="{{ user.name.last }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+            </div>
+            <div class="col-span-2 relative">
+                <label class="block text-gray-700 text-sm font-bold mb-2">User Type</label>
+                <div class="relative">
+                    <select id="userType" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-white pr-8">
+                        <option value="patient" {% if user.type == 'patient' %}selected{% endif %}>Patient</option>
+                        <option value="provider" {% if user.type == 'provider' %}selected{% endif %}>Healthcare Provider</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-6 mt-6">
+        <h2 class="text-xl font-semibold mb-4">Connect Healthcare Provider</h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Search Providers</label>
+                <div class="flex flex-col md:flex-row gap-4 mb-4">
+                    <div class="flex-1">
+                        <input type="text" 
+                               id="providerSearch" 
+                               placeholder="Search provider name..." 
+                               class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <select id="stateFilter" 
+                                class="border rounded-lg px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[120px]">
+                            <option value="">All States</option>
+                            <option value="AL">Alabama</option>
+                            <option value="AK">Alaska</option>
+                            <option value="AZ">Arizona</option>
+                            <option value="AR">Arkansas</option>
+                            <option value="CA">California</option>
+                            <option value="CO">Colorado</option>
+                            <option value="CT">Connecticut</option>
+                            <option value="DE">Delaware</option>
+                            <option value="FL">Florida</option>
+                            <option value="GA">Georgia</option>
+                            <option value="HI">Hawaii</option>
+                            <option value="ID">Idaho</option>
+                            <option value="IL">Illinois</option>
+                            <option value="IN">Indiana</option>
+                            <option value="IA">Iowa</option>
+                            <option value="KS">Kansas</option>
+                            <option value="KY">Kentucky</option>
+                            <option value="LA">Louisiana</option>
+                            <option value="ME">Maine</option>
+                            <option value="MD">Maryland</option>
+                            <option value="MA">Massachusetts</option>
+                            <option value="MI">Michigan</option>
+                            <option value="MN">Minnesota</option>
+                            <option value="MS">Mississippi</option>
+                            <option value="MO">Missouri</option>
+                            <option value="MT">Montana</option>
+                            <option value="NE">Nebraska</option>
+                            <option value="NV">Nevada</option>
+                            <option value="NH">New Hampshire</option>
+                            <option value="NJ">New Jersey</option>
+                            <option value="NM">New Mexico</option>
+                            <option value="NY">New York</option>
+                            <option value="NC">North Carolina</option>
+                            <option value="ND">North Dakota</option>
+                            <option value="OH">Ohio</option>
+                            <option value="OK">Oklahoma</option>
+                            <option value="OR">Oregon</option>
+                            <option value="PA">Pennsylvania</option>
+                            <option value="RI">Rhode Island</option>
+                            <option value="SC">South Carolina</option>
+                            <option value="SD">South Dakota</option>
+                            <option value="TN">Tennessee</option>
+                            <option value="TX">Texas</option>
+                            <option value="UT">Utah</option>
+                            <option value="VT">Vermont</option>
+                            <option value="VA">Virginia</option>
+                            <option value="WA">Washington</option>
+                            <option value="WV">West Virginia</option>
+                            <option value="WI">Wisconsin</option>
+                            <option value="WY">Wyoming</option>
+                            <option value="DC">District of Columbia</option>
+                        </select>
+                        <button onclick="findNearMe()" 
+                                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors whitespace-nowrap">
+                            Near Me
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results list -->
+            <div id="providerResults" class="space-y-3">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-6 mt-6">
+        <h2 class="text-xl font-semibold mb-4">Vitals</h2>
+        <p class="text-gray-600 mb-4">Adding vitals is optional but can help with analysis.</p>
+        
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Blood Pressure (mmHg)</label>
+                <div class="flex items-center gap-2">
+                    <div class="w-full">
+                        <input type="number" 
+                               id="bpSystolic" 
+                               value="{{ user.vitals.blood_pressure.split('/')[0] if user.vitals.blood_pressure else '' }}" 
+                               min="50" 
+                               max="300"
+                               placeholder="Systolic"
+                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                        <p id="bpSystolicError" class="text-red-500 text-sm mt-1 hidden"></p>
+                    </div>
+                    <span class="text-gray-700">/</span>
+                    <div class="w-full">
+                        <input type="number" 
+                               id="bpDiastolic" 
+                               value="{{ user.vitals.blood_pressure.split('/')[1] if user.vitals.blood_pressure else '' }}"
+                               min="30" 
+                               max="200"
+                               placeholder="Diastolic"
+                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                        <p id="bpDiastolicError" class="text-red-500 text-sm mt-1 hidden"></p>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">BMI</label>
+                <input type="number" 
+                       id="bmi" 
+                       value="{{ user.vitals.bmi }}" 
+                       min="10" 
+                       max="60"
+                       step="0.1"
+                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                <p id="bmiError" class="text-red-500 text-sm mt-1 hidden"></p>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Height</label>
+                <div class="flex items-center gap-2">
+                    <div class="w-full">
+                        <input type="number" 
+                               id="heightFeet" 
+                               value="{{ user.vitals.height.split('\'')[0] if user.vitals.height else '' }}"
+                               min="0" 
+                               max="9"
+                               placeholder="Feet"
+                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                        <p id="heightFeetError" class="text-red-500 text-sm mt-1 hidden"></p>
+                    </div>
+                    <span class="text-gray-700">ft</span>
+                    <div class="w-full">
+                        <input type="number" 
+                               id="heightInches" 
+                               value="{{ user.vitals.height.split('\'')[1].replace('\"', '') if user.vitals.height else '' }}"
+                               min="0" 
+                               max="11"
+                               placeholder="Inches"
+                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                        <p id="heightInchesError" class="text-red-500 text-sm mt-1 hidden"></p>
+                    </div>
+                    <span class="text-gray-700">in</span>
+                </div>
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Weight (lbs)</label>
+                <input type="number" 
+                       id="weight" 
+                       value="{{ user.vitals.weight }}"
+                       min="0" 
+                       max="1500"
+                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                <p id="weightError" class="text-red-500 text-sm mt-1 hidden"></p>
+            </div>
+        </div>
+
+        <div class="mt-6">
+            <button onclick="saveProfile()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Save
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-6 mt-6">
+        <h2 class="text-xl font-semibold mb-4">Health Clinic Intake Form</h2>
+        
+        <form id="intakeForm" method="POST">
+            <!-- Section 1: Patient Information -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-4">1. Patient Information</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Full Name</label>
+                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                               id="fullName" name="fullName" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Date of Birth</label>
+                        <input type="date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                               id="dateOfBirth" name="dateOfBirth" required>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Gender</label>
+                    <div class="space-y-2">
+                        <div>
+                            <input type="radio" name="gender" id="male" value="male" class="mr-2">
+                            <label for="male">Male</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="gender" id="female" value="female" class="mr-2">
+                            <label for="female">Female</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="gender" id="nonBinary" value="nonBinary" class="mr-2">
+                            <label for="nonBinary">Non-binary</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="gender" id="preferNotSay" value="preferNotSay" class="mr-2">
+                            <label for="preferNotSay">Prefer not to say</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="gender" id="other" value="other" class="mr-2">
+                            <label for="other">Other</label>
+                            <input type="text" id="genderOther" name="genderOther" 
+                                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight mt-2 hidden"
+                                   placeholder="Please specify">
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Phone Number</label>
+                        <input type="tel" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                               id="phone" name="phone">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <input type="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                               id="email" name="email">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Home Address</label>
+                    <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                              id="address" name="address" rows="2"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Emergency Contact Name</label>
+                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                               id="emergencyName" name="emergencyName">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Emergency Contact Phone</label>
+                        <input type="tel" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                               id="emergencyPhone" name="emergencyPhone">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Relationship to Emergency Contact</label>
+                    <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                            id="emergencyRelationship" name="emergencyRelationship">
+                        <option value="">Select relationship</option>
+                        <option value="parent">Parent</option>
+                        <option value="spouse">Spouse/Partner</option>
+                        <option value="sibling">Sibling</option>
+                        <option value="child">Child</option>
+                        <option value="friend">Friend</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Section 2: Insurance & Payment Information -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-4">2. Insurance & Payment Information</h3>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Do you have health insurance?</label>
+                    <div class="space-y-2">
+                        <div>
+                            <input type="radio" name="hasInsurance" id="insuranceYes" value="yes" class="mr-2">
+                            <label for="insuranceYes">Yes</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="hasInsurance" id="insuranceNo" value="no" class="mr-2">
+                            <label for="insuranceNo">No</label>
+                        </div>
+                    </div>
+                </div>
+                <div id="insuranceDetails" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Insurance Provider</label>
+                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                               id="insuranceProvider" name="insuranceProvider">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Policy Number / Member ID</label>
+                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                               id="policyNumber" name="policyNumber">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Medical History -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-4">3. Medical History</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Are you currently taking any medications?</label>
+                        <div class="space-y-2">
+                            <div>
+                                <input type="radio" name="takingMedications" id="medsYes" value="yes" class="mr-2">
+                                <label for="medsYes">Yes</label>
+                            </div>
+                            <div>
+                                <input type="radio" name="takingMedications" id="medsNo" value="no" class="mr-2">
+                                <label for="medsNo">No</label>
+                            </div>
+                            <div>
+                                <input type="radio" name="takingMedications" id="medsUnsure" value="unsure" class="mr-2">
+                                <label for="medsUnsure">Unsure</label>
+                            </div>
+                        </div>
+                        <div id="medicationsList" class="mt-2 hidden">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Please list your medications:</label>
+                            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                                      id="medications" name="medications" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Do you have any chronic conditions?</label>
+                        <div class="space-y-2">
+                            <div>
+                                <input type="checkbox" name="chronicConditions" value="diabetes" class="mr-2">
+                                <label>Diabetes</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" name="chronicConditions" value="hypertension" class="mr-2">
+                                <label>Hypertension (High Blood Pressure)</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" name="chronicConditions" value="asthma" class="mr-2">
+                                <label>Asthma</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" name="chronicConditions" value="heartDisease" class="mr-2">
+                                <label>Heart Disease</label>
+                            </div>
+                            <div>
+                                <input type="checkbox" name="chronicConditions" value="other" class="mr-2">
+                                <label>Other</label>
+                                <input type="text" id="chronicOther" name="chronicOther" 
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight mt-2 hidden"
+                                       placeholder="Please specify">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Current Health Concerns -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-4">4. Current Health Concerns</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">What is the primary reason for your visit today?</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                                  id="primaryReason" name="primaryReason" rows="3"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Rate your pain level (if applicable):</label>
+                        <input type="range" min="0" max="10" class="w-full" id="painLevel" name="painLevel">
+                        <div class="flex justify-between text-xs text-gray-600">
+                            <span>No pain</span>
+                            <span>Moderate</span>
+                            <span>Severe</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: Lifestyle -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-4">5. Lifestyle</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Do you exercise regularly?</label>
+                        <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                                id="exercise" name="exercise">
+                            <option value="">Select frequency</option>
+                            <option value="daily">Yes, daily</option>
+                            <option value="weekly">Yes, a few times a week</option>
+                            <option value="occasionally">Occasionally</option>
+                            <option value="rarely">No, rarely or never</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">How would you rate your stress level?</label>
+                        <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight" 
+                                id="stressLevel" name="stressLevel">
+                            <option value="">Select stress level</option>
+                            <option value="low">Low</option>
+                            <option value="moderate">Moderate</option>
+                            <option value="high">High</option>
+                            <option value="extreme">Extreme</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 6: Consent -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-4">6. Consent & Legal Agreements</h3>
+                <div class="space-y-4">
+                    <div>
+                        <input type="checkbox" id="hipaaConsent" name="hipaaConsent" class="mr-2" required>
+                        <label for="hipaaConsent" class="text-gray-700">I agree to the HIPAA Privacy Policy</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="treatmentConsent" name="treatmentConsent" class="mr-2" required>
+                        <label for="treatmentConsent" class="text-gray-700">I consent to treatment from this healthcare provider</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Save Form
+                </button>
+            </div>
+        </form>
+
+        <div id="toast" class="hidden fixed bottom-4 right-4 bg-white shadow-lg rounded-lg p-4 mb-4 border-l-4 border-green-500 transition-opacity duration-300">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p id="toastMessage" class="text-sm font-medium text-gray-900">
+                        Form saved successfully!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Populate form with session data if available
+            fetch('/get_intake_form')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.form_data) {
+                        const formData = data.form_data;
+                        
+                        // Populate text inputs and textareas
+                        Object.keys(formData).forEach(key => {
+                            const element = document.getElementById(key);
+                            if (element) {
+                                if (element.type === 'radio') {
+                                    const radio = document.querySelector(`input[name="${key}"][value="${formData[key]}"]`);
+                                    if (radio) radio.checked = true;
+                                } else if (element.type === 'checkbox') {
+                                    element.checked = formData[key];
+                                } else {
+                                    element.value = formData[key];
+                                }
+                            }
+                        });
+
+                        // Handle special cases like multiple checkboxes
+                        if (formData.chronicConditions && Array.isArray(formData.chronicConditions)) {
+                            formData.chronicConditions.forEach(condition => {
+                                const checkbox = document.querySelector(`input[name="chronicConditions"][value="${condition}"]`);
+                                if (checkbox) checkbox.checked = true;
+                            });
+                        }
+                    }
+                })
+                .catch(error => console.error('Error loading form data:', error));
+
+            // Show/hide "Other" text input for gender
+            document.querySelector('input[value="other"]').addEventListener('change', function() {
+                document.getElementById('genderOther').classList.toggle('hidden', !this.checked);
+            });
+
+            // Show/hide medication list
+            document.querySelectorAll('input[name="takingMedications"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    document.getElementById('medicationsList').classList.toggle('hidden', this.value !== 'yes');
+                });
+            });
+
+            // Show/hide chronic conditions other
+            document.querySelector('input[name="chronicConditions"][value="other"]').addEventListener('change', function() {
+                document.getElementById('chronicOther').classList.toggle('hidden', !this.checked);
+            });
+
+            function showToast(message, isSuccess = true) {
+                const toast = document.getElementById('toast');
+                const toastMessage = document.getElementById('toastMessage');
+                
+                // Set border color based on success/error
+                toast.classList.toggle('border-green-500', isSuccess);
+                toast.classList.toggle('border-red-500', !isSuccess);
+                
+                // Set message
+                toastMessage.textContent = message;
+                
+                // Show toast
+                toast.classList.remove('hidden');
+                toast.classList.add('opacity-100');
+                
+                // Hide after 3 seconds
+                setTimeout(() => {
+                    toast.classList.add('opacity-0');
+                    setTimeout(() => {
+                        toast.classList.add('hidden');
+                    }, 300);
+                }, 3000);
+            }
+
+            // Update form submission handler
+            document.getElementById('intakeForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const jsonData = {};
+                
+                formData.forEach((value, key) => {
+                    if (jsonData[key]) {
+                        if (!Array.isArray(jsonData[key])) {
+                            jsonData[key] = [jsonData[key]];
+                        }
+                        jsonData[key].push(value);
+                    } else {
+                        jsonData[key] = value;
+                    }
+                });
+
+                fetch('/save_intake_form', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(jsonData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Form saved successfully!', true);
+                    } else {
+                        showToast('Error saving form: ' + data.error, false);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Error saving form', false);
+                });
+            });
+        });
+        </script>
+    </div>
+</div>
+
+<script>
+function clearErrors() {
+    const errorElements = document.querySelectorAll('[id$="Error"]');
+    errorElements.forEach(element => {
+        element.textContent = '';
+        element.classList.add('hidden');
+    });
+}
+
+function showError(elementId, message) {
+    const errorElement = document.getElementById(elementId + 'Error');
+    errorElement.textContent = message;
+    errorElement.classList.remove('hidden');
+}
+
+function saveProfile() {
+    const firstName = document.getElementById('firstName').value;
+    const lastName = document.getElementById('lastName').value;
+    const userType = document.getElementById('userType').value;
+    
+    // Get vitals values
+    const bpSystolic = document.getElementById('bpSystolic').value;
+    const bpDiastolic = document.getElementById('bpDiastolic').value;
+    const bmi = document.getElementById('bmi').value;
+    const heightFeet = document.getElementById('heightFeet').value;
+    const heightInches = document.getElementById('heightInches').value;
+    const weight = document.getElementById('weight').value;
+
+    // Clear previous errors
+    clearErrors();
+
+    // Validate vitals
+    let hasError = false;
+    
+    if (bpSystolic && (bpSystolic < 50 || bpSystolic > 300)) {
+        showError('bpSystolic', 'Systolic blood pressure must be between 50 and 300 mmHg');
+        hasError = true;
+    }
+    if (bpDiastolic && (bpDiastolic < 30 || bpDiastolic > 200)) {
+        showError('bpDiastolic', 'Diastolic blood pressure must be between 30 and 200 mmHg');
+        hasError = true;
+    }
+    if (bmi && (bmi < 10 || bmi > 60)) {
+        showError('bmi', 'BMI must be between 10 and 60');
+        hasError = true;
+    }
+    if (heightFeet && heightFeet > 9) {
+        showError('heightFeet', 'Height cannot exceed 9 feet');
+        hasError = true;
+    }
+    if (heightInches && (heightInches < 0 || heightInches > 11)) {
+        showError('heightInches', 'Inches must be between 0 and 11');
+        hasError = true;
+    }
+    if (weight && weight > 1500) {
+        showError('weight', 'Weight cannot exceed 1500 lbs');
+        hasError = true;
+    }
+
+    if (hasError) {
+        return;
+    }
+
+    // Format values
+    const bloodPressure = bpSystolic && bpDiastolic ? `${bpSystolic}/${bpDiastolic}` : '';
+    const height = heightFeet ? `${heightFeet}'${heightInches || 0}"` : '';
+    
+    fetch('/update_profile', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            first_name: firstName,
+            last_name: lastName,
+            user_type: userType,
+            vitals: {
+                blood_pressure: bloodPressure,
+                bmi: bmi,
+                height: height,
+                weight: weight
+            }
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/';
+        } else {
+            throw new Error(data.error || 'Failed to update profile');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update profile. Please try again.');
+    });
+}
+
+let debounceTimeout;
+
+// Add provider search functionality
+document.getElementById('providerSearch').addEventListener('input', function() {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => searchProviders(), 300);
+});
+
+document.getElementById('stateFilter').addEventListener('change', searchProviders);
+
+function searchProviders() {
+    const searchTerm = document.getElementById('providerSearch').value;
+    const state = document.getElementById('stateFilter').value;
+    const resultsContainer = document.getElementById('providerResults');
+    
+    // Show loading state
+    resultsContainer.innerHTML = '<div class="text-gray-500">Searching...</div>';
+    
+    fetch(`/search_providers?term=${encodeURIComponent(searchTerm)}&state=${encodeURIComponent(state)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            if (data.providers.length === 0) {
+                resultsContainer.innerHTML = '<div class="text-gray-500">No providers found</div>';
+                return;
+            }
+            
+            resultsContainer.innerHTML = data.providers.map(provider => `
+                <div class="border rounded-lg p-4 hover:bg-gray-50">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-medium text-lg">${provider.name || provider.provider}</h3>
+                            <p class="text-sm text-gray-600">Available in: ${formatStates(provider.location)}</p>
+                        </div>
+                        <button onclick="connectProvider('${provider.name || provider.provider}')" 
+                                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                            Connect
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            resultsContainer.innerHTML = `<div class="text-red-500">Error: ${error.message}</div>`;
+        });
+}
+
+function connectProvider(providerName) {
+    fetch(`/get_provider_url?provider=${encodeURIComponent(providerName)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            // Open provider login page in a new tab
+            window.open(data.url, '_blank');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error connecting to provider: ' + error.message);
+        });
+}
+
+function findNearMe() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            
+            // Use reverse geocoding to get the state
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
+                .then(response => response.json())
+                .then(data => {
+                    const stateCode = data.principalSubdivisionCode.replace('US-', '');
+                    const stateSelect = document.getElementById('stateFilter');
+                    
+                    // Set the state in the dropdown
+                    if (stateSelect.querySelector(`option[value="${stateCode}"]`)) {
+                        stateSelect.value = stateCode;
+                        // Trigger the search
+                        searchProviders();
+                    } else {
+                        throw new Error('State not found in list');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Could not determine your location. Please select a state manually.');
+                });
+        }, function(error) {
+            console.error('Geolocation error:', error);
+            alert('Could not access your location. Please allow location access or select a state manually.');
+        });
+    } else {
+        alert('Geolocation is not supported by your browser');
+    }
+}
+
+// Add helper function to format state list
+function formatStates(stateString) {
+    return stateString.split(',')
+        .map(state => state.trim())
+        .join(', ');
+}
+</script>
+{% endblock %}
