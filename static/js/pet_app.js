@@ -55,14 +55,22 @@ const suggestedPrompts = {
 };
 
 // Basic utilities
-function showLoading() {
+function showLoading(context = 'documents') {
     const loadingState = document.getElementById('loadingState');
     const randomGif = loadingGifs[Math.floor(Math.random() * loadingGifs.length)];
+    
+    // Different loading messages based on context
+    const loadingMessages = {
+        documents: 'Analyzing documents...',
+        chat: 'Thinking...',
+        poop: 'Analyzing image...',
+        training: 'Generating training tips...'
+    };
     
     loadingState.innerHTML = `
         <div class="bg-white p-4 rounded-lg shadow-xl text-center">
             <img src="${randomGif}" alt="Loading..." class="mx-auto h-24 w-24 object-contain mb-2">
-            <p class="text-gray-600 text-sm">Analyzing documents...</p>
+            <p class="text-gray-600 text-sm">${loadingMessages[context] || 'Processing...'}</p>
         </div>
     `;
     
@@ -111,7 +119,7 @@ function handleFiles(files) {
         formData.append('files[]', file);
     }
 
-    showLoading();
+    showLoading('documents');
 
     fetch('/upload', {
         method: 'POST',
@@ -125,6 +133,10 @@ function handleFiles(files) {
             document.getElementById('insights-anomalies').innerHTML = data.result.insights_anomalies;
             document.getElementById('followup-actions').innerHTML = data.result.followup_actions;
             analysisResult.classList.remove('hidden');
+            
+            // Add analysis summary to chat
+            const summary = `Here's what I found in your documents:\n\n${data.result.synopsis}`;
+            addMessageToChat(summary, 'assistant');
             
             // Generate and display dynamic prompts based on the analysis
             const dynamicPrompts = generateDynamicPrompts(data.result);
@@ -186,92 +198,145 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Set up poop analyzer
     const poopFileInput = document.getElementById('poopFileInput');
-    const poopDropZone = document.getElementById('poopDropZone');
-    if (poopFileInput && poopDropZone) {
+    if (poopFileInput) {
         poopFileInput.addEventListener('change', function(e) {
-            handlePoopImage(e.target.files[0]);
-        });
-
-        // Add drag and drop support
-        poopDropZone.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.classList.add('border-green-500');
-        });
-
-        poopDropZone.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.classList.remove('border-green-500');
-        });
-
-        poopDropZone.addEventListener('drop', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.classList.remove('border-green-500');
+            if (e.target.files.length === 0) return;
             
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                handlePoopImage(file);
-            }
-        });
-    }
-
-    // Add chat form submission handler
-    const chatForm = document.getElementById('chat-form');
-    if (chatForm) {
-        chatForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const chatInput = document.getElementById('chat-input');
-            const message = chatInput.value.trim();
+            const file = e.target.files[0];
+            const formData = new FormData();
+            formData.append('image', file);
             
-            if (!message) return;
-
-            // Add user message to chat
-            addMessageToChat(message, 'user');
+            showLoading('poop');
             
-            // Clear input
-            chatInput.value = '';
-
-            // Show chat loading indicator
-            showChatLoading();
-
-            // Send message to backend
-            fetch('/chat', {
+            fetch('/analyze-poop', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ message: message })
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    hideChatLoading();
-                    addMessageToChat(data.response, 'assistant');
-                    
-                    // If there's a medical error risk, show warning
-                    if (data.medical_error_risk) {
-                        addMessageToChat('⚠️ Note: This information is for general guidance only. Please consult with your veterinarian for specific medical advice.', 'assistant');
-                    }
+                    addMessageToChat(data.analysis, 'assistant');
                 } else {
-                    throw new Error(data.error || 'Failed to get response');
+                    throw new Error(data.error || 'Failed to analyze image');
                 }
             })
             .catch(error => {
-                console.error('Chat error:', error);
-                hideChatLoading();
-                addMessageToChat('Sorry, I encountered an error. Please try again.', 'assistant');
+                console.error('Error:', error);
+                alert('Error analyzing image: ' + error.message);
             })
             .finally(() => {
-                // Scroll to bottom of chat
-                const chatMessages = document.getElementById('chat-messages');
-                if (chatMessages) {
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
+                hideLoading();
             });
         });
     }
+
+    // Set up chat functionality
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+
+    if (chatForm) {
+        chatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Add user message to chat
+            addMessageToChat(message, 'user');
+            chatInput.value = '';
+
+            showLoading('chat');
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    addMessageToChat(data.response, 'assistant');
+                } else {
+                    throw new Error(data.error || 'Failed to get response');
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                addMessageToChat('Sorry, I encountered an error. Please try again.', 'assistant');
+            } finally {
+                hideLoading();
+            }
+        });
+    }
+
+    // Add breed selection for training tips
+    const trainingSpecies = document.getElementById('training-species');
+    const trainingBreed = document.getElementById('training-breed');
+    
+    if (trainingSpecies && trainingBreed) {
+        trainingSpecies.addEventListener('change', async function() {
+            const species = this.value;
+            
+            if (!species) {
+                trainingBreed.innerHTML = '<option value="">Select Species First</option>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/breeds/${species}`);
+                const breeds = await response.json();
+                
+                trainingBreed.innerHTML = '<option value="">Select Breed</option>' + 
+                    breeds.map(breed => `<option value="${breed}">${breed}</option>`).join('');
+            } catch (error) {
+                console.error('Error fetching breeds:', error);
+                trainingBreed.innerHTML = '<option value="">Error loading breeds</option>';
+            }
+        });
+    }
+
+    // Add training tips function
+    window.getTrainingTips = async function() {
+        const species = document.getElementById('training-species').value;
+        const breed = document.getElementById('training-breed').value;
+        
+        if (!species || !breed) {
+            alert('Please select both species and breed');
+            return;
+        }
+        
+        showLoading('training');
+        
+        try {
+            const response = await fetch('/get_training_tips', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ species, breed })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('trainingTips').innerHTML = formatSection(data.result.training);
+                document.getElementById('playTips').innerHTML = formatSection(data.result.play);
+                document.getElementById('enrichmentTips').innerHTML = formatSection(data.result.enrichment);
+                document.getElementById('trainingTipsResult').classList.remove('hidden');
+                
+                // Scroll to results
+                document.getElementById('trainingTipsResult').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                throw new Error(data.error || 'Failed to get training tips');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error getting training tips: ' + error.message);
+        } finally {
+            hideLoading();
+        }
+    };
 });
 
 // Chat functionality
@@ -281,14 +346,16 @@ function addMessageToChat(message, role = 'user') {
 
     const messageDiv = document.createElement('div');
     messageDiv.className = role === 'assistant' ? 
-        'bg-blue-50 p-4 rounded-lg' : 
-        'bg-gray-50 p-4 rounded-lg';
+        'bg-blue-50 p-4 rounded-lg chat-message' : 
+        'bg-gray-50 p-4 rounded-lg chat-message';
 
-    const messageContent = document.createElement('p');
-    messageContent.className = 'text-gray-700 whitespace-pre-line';
-    messageContent.textContent = message;
+    // Convert line breaks and format lists
+    const formattedMessage = message
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n•/g, '<br>•')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-    messageDiv.appendChild(messageContent);
+    messageDiv.innerHTML = `<div class="prose max-w-none text-gray-700">${formattedMessage}</div>`;
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -388,136 +455,37 @@ function displayPrompts(prompts) {
     `).join('');
 }
 
-// Update the useSuggestedPrompt function
-function useSuggestedPrompt(prompt) {
-    const chatForm = document.getElementById('chat-form');
+// Update the useSuggestedPrompt function to use the chat context
+async function useSuggestedPrompt(prompt) {
     const chatInput = document.getElementById('chat-input');
-    if (chatInput && chatForm) {
-        chatInput.value = prompt;
-        // Create and dispatch submit event
-        const submitEvent = new Event('submit', {
-            'bubbles': true,
-            'cancelable': true
+    const chatForm = document.getElementById('chat-form');
+    if (!chatInput || !chatForm) return;
+
+    chatInput.value = prompt;
+    addMessageToChat(prompt, 'user');
+    chatInput.value = '';
+
+    showLoading('chat');  // Use chat context for loading message
+
+    try {
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: prompt })
         });
-        chatForm.dispatchEvent(submitEvent);
-    }
-}
 
-// Add a new function for chat loading indicator
-function showChatLoading() {
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return;
-
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'chat-loading';
-    loadingDiv.className = 'bg-blue-50 p-4 rounded-lg flex items-center gap-2';
-    loadingDiv.innerHTML = `
-        <div class="flex gap-1">
-            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
-        </div>
-        <span class="text-gray-600 text-sm">Thinking...</span>
-    `;
-    
-    chatMessages.appendChild(loadingDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function hideChatLoading() {
-    const loadingDiv = document.getElementById('chat-loading');
-    if (loadingDiv) {
-        loadingDiv.remove();
-    }
-}
-
-function formatAnalysisResults(results) {
-    return `
-    <div class="space-y-6">
-        <div class="bg-blue-50 p-4 rounded-xl">
-            <h3 class="font-semibold text-blue-800 mb-2">📋 Synopsis</h3>
-            <div class="space-y-2">
-                <p><span class="font-medium">Key Findings:</span> ${results.key_findings}</p>
-                <p><span class="font-medium">Health Metrics:</span> ${results.health_metrics}</p>
-                <p><span class="font-medium">Medication:</span> ${results.medication}</p>
-            </div>
-        </div>
-
-        <div class="bg-purple-50 p-4 rounded-xl">
-            <h3 class="font-semibold text-purple-800 mb-2">🔍 Insights & Anomalies</h3>
-            <div class="space-y-2">
-                <p><span class="font-medium">Analysis:</span> ${results.analysis}</p>
-                <p><span class="font-medium">Patterns:</span> ${results.patterns}</p>
-                <p><span class="font-medium">Recommendations:</span> ${results.recommendations}</p>
-            </div>
-        </div>
-
-        <div class="bg-green-50 p-4 rounded-xl">
-            <h3 class="font-semibold text-green-800 mb-2">✅ Follow-up Actions</h3>
-            <div class="space-y-2">
-                <p><span class="font-medium">Next Steps:</span> ${results.next_steps}</p>
-                <p><span class="font-medium">Preventive Measures:</span> ${results.preventive}</p>
-                <p><span class="font-medium">Next Check-up:</span> ${results.next_checkup}</p>
-            </div>
-        </div>
-    </div>`;
-}
-
-function formatChatResponse(response) {
-    // Convert markdown-style bold (**text**) to HTML bold tags
-    response = response.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
-    
-    // Format lists with proper spacing and bullets
-    response = response.replace(/(\d+\.) /g, '<br>$1 ');
-    
-    return `
-    <div class="bg-white p-4 rounded-xl shadow-sm">
-        <p class="text-gray-700 leading-relaxed space-y-2">${response}</p>
-    </div>`;
-}
-
-// Add these functions to handle poop analysis
-function handlePoopImage(file) {
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('image', file);
-
-    showLoading();
-
-    fetch('/analyze_poop', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
+        const data = await response.json();
         if (data.success) {
-            const poopResult = document.getElementById('poopAnalysisResult');
-            document.getElementById('poopSummary').innerHTML = formatPoopSection(data.result.summary);
-            document.getElementById('poopConcerns').innerHTML = formatPoopSection(data.result.concerns);
-            document.getElementById('poopRecommendations').innerHTML = formatPoopSection(data.result.recommendations);
-            poopResult.classList.remove('hidden');
-            
-            // Generate and display poop-specific prompts
-            const poopPrompts = suggestedPrompts.poopAnalysis;
-            displayPrompts(poopPrompts);
-            
-            poopResult.scrollIntoView({ behavior: 'smooth' });
+            addMessageToChat(data.response, 'assistant');
         } else {
-            throw new Error(data.error || 'Failed to analyze image');
+            throw new Error(data.error || 'Failed to get response');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error analyzing image: ' + error.message);
-    })
-    .finally(() => {
+    } catch (error) {
+        console.error('Chat error:', error);
+        addMessageToChat('Sorry, I encountered an error. Please try again.', 'assistant');
+    } finally {
         hideLoading();
-    });
-}
-
-function formatPoopSection(content) {
-    return `<div class="prose max-w-none">
-        ${content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')}
-    </div>`;
-}
+    }
+} 
