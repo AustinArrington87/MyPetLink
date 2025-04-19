@@ -3,6 +3,86 @@
 {% block title %}MyPetLink - Pet Health Analysis{% endblock %}
 
 {% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f0f7ff 0%, #fff5f5 100%);
+        background-attachment: fixed;
+    }
+
+    .welcome-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(246, 173, 85, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(246, 173, 85, 0.05) 0%, transparent 50%);
+    }
+
+    .analysis-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(66, 153, 225, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(66, 153, 225, 0.05) 0%, transparent 50%);
+    }
+
+    .chat-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(72, 187, 120, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(72, 187, 120, 0.05) 0%, transparent 50%);
+    }
+
+    .upload-zone {
+        border: 2px dashed #93C5FD;
+        transition: all 0.3s ease;
+    }
+
+    .upload-zone:hover {
+        border-color: #3B82F6;
+        transform: scale(1.01);
+    }
+
+    .paw-print {
+        position: absolute;
+        opacity: 0.1;
+        transform: rotate(45deg);
+        pointer-events: none;
+    }
+
+    .chat-message {
+        line-height: 1.6;
+    }
+
+    .chat-message p {
+        margin-bottom: 0.75rem;
+    }
+
+    .chat-message ul, 
+    .chat-message ol {
+        margin: 1rem 0;
+        padding-left: 1.5rem;
+    }
+
+    .chat-message li {
+        margin-bottom: 0.5rem;
+    }
+
+    .analysis-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .analysis-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+
 <div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
         <a href="{{ url_for('home') }}">
@@ -10,25 +90,26 @@
                  alt="MyPetLink Logo" 
                  class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300">
         </a>
-        <div class="flex items-center gap-6">
-            <a href="{{ url_for('profile') }}" class="text-gray-600 hover:text-gray-900 transition-colors duration-200">Pet Profile</a>
-        </div>
+        <a href="{{ url_for('profile') }}" class="text-gray-600 hover:text-gray-900 transition-colors duration-200">Pet Profile</a>
     </div>
 </div>
 
-<div class="max-w-4xl mx-auto mt-20">
+<div class="max-w-4xl mx-auto mt-20 px-4">
     <!-- Welcome Message -->
-    <div class="bg-white shadow-md rounded-lg p-6 mb-8">
-        <h1 class="text-2xl font-bold mb-4">Welcome, {{ user_name }}!</h1>
-        <p class="text-gray-600">
-            Analyze your pet's health records, check their poop health, or get breed-specific training tips.
+    <div class="welcome-card rounded-2xl p-6 shadow-lg mb-8 relative overflow-hidden">
+        <div class="paw-print text-8xl absolute -top-4 -right-4">🐾</div>
+        <h1 class="text-2xl font-bold mb-4 text-orange-800">Welcome, {{ user_name }}! 🐾</h1>
+        <p class="text-gray-600 relative z-10">
+            Let's take care of your furry friend! Upload vet records, check their health, or get personalized tips.
         </p>
     </div>
 
     <!-- Vet Record Analysis -->
-    <div class="bg-white shadow-md rounded-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Analyze Veterinary Records</h2>
-        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center" id="dropZone">
+    <div class="analysis-card rounded-2xl p-6 shadow-lg mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-blue-800 flex items-center">
+            <span class="text-2xl mr-2">📋</span> Analyze Veterinary Records
+        </h2>
+        <div class="upload-zone rounded-xl p-6 text-center bg-blue-50 relative overflow-hidden" id="dropZone">
             <input type="file" 
                    id="fileInput" 
                    multiple 
@@ -36,62 +117,66 @@
                    accept=".pdf,.png,.jpg,.jpeg,.txt">
             <button type="button" 
                     onclick="document.getElementById('fileInput').click()" 
-                    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    class="bg-blue-500 text-white px-6 py-3 rounded-full hover:bg-blue-600 transform transition-all hover:scale-105 shadow-md">
                 + Add Documents
             </button>
-            <p class="text-gray-500 mt-2">Upload vet records, lab results, or vaccination records</p>
+            <p class="text-gray-600 mt-3">Upload vet records, lab results, or vaccination records</p>
+            <div class="paw-print text-6xl absolute -bottom-4 -right-4 opacity-5">🐾</div>
         </div>
     </div>
 
     <!-- Analysis Results -->
-    <div id="analysisResult" class="bg-white shadow-md rounded-lg p-6 mt-6 hidden">
-        <h2 class="text-xl font-semibold mb-4">Analysis Results</h2>
+    <div id="analysisResult" class="bg-white rounded-2xl p-6 shadow-lg mt-6 hidden">
+        <h2 class="text-xl font-semibold mb-4 text-blue-800">Analysis Results</h2>
         <div class="space-y-4">
-            <div class="bg-blue-50 p-4 rounded">
+            <div class="bg-blue-50 p-4 rounded-xl">
                 <div id="synopsis"></div>
             </div>
-            <div class="bg-gray-50 p-4 rounded">
+            <div class="bg-gray-50 p-4 rounded-xl">
                 <div id="insights-anomalies"></div>
             </div>
-            <div class="bg-green-50 p-4 rounded">
+            <div class="bg-green-50 p-4 rounded-xl">
                 <div id="followup-actions"></div>
             </div>
         </div>
     </div>
 
-    <!-- After Analysis Results section -->
-    <div id="suggestedPrompts" class="mt-4 flex flex-wrap gap-2">
-        <!-- Prompts will be dynamically populated here -->
-    </div>
-
-    <!-- Chat section -->
-    <div class="bg-white shadow-md rounded-lg p-6 mt-6">
+    <!-- Chat Section -->
+    <div class="chat-card rounded-2xl p-6 shadow-lg mt-6">
         <div class="flex flex-col h-[400px]">
-            <div id="chat-messages" class="flex-1 overflow-y-auto mb-4 space-y-4">
-                <!-- Messages will appear here -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto mb-4 space-y-4 relative">
+                <div class="bg-blue-50 p-4 rounded-xl">
+                    <p class="text-gray-700">
+                        Hi! I'm your pet health assistant. I can help analyze vet records or provide care tips. What would you like to know? 🐾
+                    </p>
+                </div>
+            </div>
+            
+            <div id="suggestedPrompts" class="mb-4 flex flex-wrap gap-2">
+                <!-- Prompts will be dynamically populated -->
             </div>
             
             <div class="border-t pt-4">
                 <form id="chat-form" class="flex gap-2">
                     <input type="text" 
                            id="chat-input" 
-                           class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="Ask about your pet's health or analysis...">
+                           class="flex-1 border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Ask about your pet's health...">
                     <button type="submit" 
-                            class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            class="bg-blue-500 text-white px-6 py-2 rounded-xl hover:bg-blue-600 transform transition-all hover:scale-105 shadow-md">
                         Send
                     </button>
                 </form>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Loading State -->
-    <div id="loadingState" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white p-4 rounded-lg shadow-xl text-center">
-            <img src="/static/img/GIFs/cleo.gif" alt="Loading..." class="mx-auto h-24 w-24 object-contain mb-2">
-            <p class="text-gray-600 text-sm">Analyzing documents...</p>
-        </div>
+<!-- Loading State -->
+<div id="loadingState" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white p-4 rounded-xl shadow-xl text-center">
+        <img src="/static/img/GIFs/cleo.gif" alt="Loading..." class="mx-auto h-24 w-24 object-contain mb-2">
+        <p class="text-gray-600 text-sm">Analyzing documents...</p>
     </div>
 </div>
 
