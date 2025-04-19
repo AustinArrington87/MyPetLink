@@ -186,35 +186,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Set up poop analyzer
     const poopFileInput = document.getElementById('poopFileInput');
-    if (poopFileInput) {
+    const poopDropZone = document.getElementById('poopDropZone');
+    if (poopFileInput && poopDropZone) {
         poopFileInput.addEventListener('change', function(e) {
-            if (e.target.files.length === 0) return;
+            handlePoopImage(e.target.files[0]);
+        });
+
+        // Add drag and drop support
+        poopDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.add('border-green-500');
+        });
+
+        poopDropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.remove('border-green-500');
+        });
+
+        poopDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.remove('border-green-500');
             
-            const file = e.target.files[0];
-            const formData = new FormData();
-            formData.append('image', file);
-            
-            showLoading();
-            
-            fetch('/analyze-poop', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addMessageToChat(data.analysis, 'assistant');
-                } else {
-                    throw new Error(data.error || 'Failed to analyze image');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error analyzing image: ' + error.message);
-            })
-            .finally(() => {
-                hideLoading();
-            });
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handlePoopImage(file);
+            }
         });
     }
 
@@ -474,5 +473,51 @@ function formatChatResponse(response) {
     return `
     <div class="bg-white p-4 rounded-xl shadow-sm">
         <p class="text-gray-700 leading-relaxed space-y-2">${response}</p>
+    </div>`;
+}
+
+// Add these functions to handle poop analysis
+function handlePoopImage(file) {
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    showLoading();
+
+    fetch('/analyze_poop', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const poopResult = document.getElementById('poopAnalysisResult');
+            document.getElementById('poopSummary').innerHTML = formatPoopSection(data.result.summary);
+            document.getElementById('poopConcerns').innerHTML = formatPoopSection(data.result.concerns);
+            document.getElementById('poopRecommendations').innerHTML = formatPoopSection(data.result.recommendations);
+            poopResult.classList.remove('hidden');
+            
+            // Generate and display poop-specific prompts
+            const poopPrompts = suggestedPrompts.poopAnalysis;
+            displayPrompts(poopPrompts);
+            
+            poopResult.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            throw new Error(data.error || 'Failed to analyze image');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error analyzing image: ' + error.message);
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+function formatPoopSection(content) {
+    return `<div class="prose max-w-none">
+        ${content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')}
     </div>`;
 }
