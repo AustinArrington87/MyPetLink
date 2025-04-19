@@ -105,21 +105,24 @@ def analyze_health_records(file_paths, document_type="vet_record"):
 Document content:
 {combined_text}
 
-Please provide your analysis in this format:
-SYNOPSIS
-• Key findings and immediate concerns
-• Important health metrics
-• Medication details
+Please format your analysis with these sections, using emojis and bold headers:
 
-INSIGHTS AND ANOMALIES
-• Detailed analysis of any issues
-• Trends or patterns
-• Recommendations
+SYNOPSIS 🏥
+**Patient Overview**: Current status and primary concerns
+**Health Metrics**: Important measurements and vital signs
+**Medications**: Current prescriptions and recent vaccinations
 
-FOLLOW-UP ACTIONS
-• Suggested next steps
-• Preventive measures
-• Timing for next check-up"""
+INSIGHTS AND ANOMALIES 🔍
+**Clinical Findings**: Notable symptoms and examination results
+**Health Patterns**: Observed trends and recurring issues
+**Risk Factors**: Potential health concerns and vulnerabilities
+
+FOLLOW-UP ACTIONS ✅
+**Next Steps**: Urgent actions and appointments
+**Tests**: Recommended diagnostics
+**Prevention**: Long-term health recommendations
+
+Please use appropriate emojis for key points (🔴 for urgent concerns, 💊 for medications, 📊 for metrics, etc.)"""
         )
 
         # Run the assistant
@@ -143,7 +146,7 @@ FOLLOW-UP ACTIONS
         messages = client.beta.threads.messages.list(thread_id=thread.id)
         analysis = messages.data[0].content[0].text.value
 
-        # Extract sections more robustly
+        # Extract sections more robustly and clean up formatting
         sections = analysis.split('\n\n')
         synopsis = ""
         insights = ""
@@ -152,23 +155,25 @@ FOLLOW-UP ACTIONS
         current_section = None
         for section in sections:
             section = section.strip()
-            if 'SYNOPSIS' in section:
+            if 'SYNOPSIS 🏥' in section:
                 current_section = 'synopsis'
-                synopsis = section.replace('SYNOPSIS', '').strip()
-            elif 'INSIGHTS AND ANOMALIES' in section:
+                # Remove the header and clean up asterisks
+                synopsis = section.replace('SYNOPSIS 🏥', '').strip()
+            elif 'INSIGHTS AND ANOMALIES 🔍' in section:
                 current_section = 'insights'
-                insights = section.replace('INSIGHTS AND ANOMALIES', '').strip()
-            elif 'FOLLOW-UP ACTIONS' in section:
+                insights = section.replace('INSIGHTS AND ANOMALIES 🔍', '').strip()
+            elif 'FOLLOW-UP ACTIONS ✅' in section:
                 current_section = 'followup'
-                followup = section.replace('FOLLOW-UP ACTIONS', '').strip()
+                followup = section.replace('FOLLOW-UP ACTIONS ✅', '').strip()
             elif current_section and section:
-                # Append additional content to the current section
+                # Clean up any extra asterisks in the content
+                cleaned_section = section.replace('****', '').strip()
                 if current_section == 'synopsis':
-                    synopsis += "\n" + section
+                    synopsis += "\n" + cleaned_section
                 elif current_section == 'insights':
-                    insights += "\n" + section
+                    insights += "\n" + cleaned_section
                 elif current_section == 'followup':
-                    followup += "\n" + section
+                    followup += "\n" + cleaned_section
 
         # Skip database operations entirely
         
@@ -177,9 +182,9 @@ FOLLOW-UP ACTIONS
             return {
                 'success': True,
                 'result': {
-                    'synopsis': synopsis,
-                    'insights_anomalies': insights,
-                    'followup_actions': followup
+                    'synopsis': synopsis.replace('---', '').strip(),
+                    'insights_anomalies': insights.replace('---', '').strip(),
+                    'followup_actions': followup.replace('---', '').strip()
                 }
             }
         else:
