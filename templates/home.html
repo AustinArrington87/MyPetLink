@@ -125,6 +125,26 @@
         </div>
     </div>
 
+    <!-- Add this after the Vet Record Analysis section -->
+    <div class="analysis-card rounded-2xl p-6 shadow-lg mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-green-800 flex items-center">
+            <span class="text-2xl mr-2">💩</span> Poop Analyzer
+        </h2>
+        <div class="upload-zone rounded-xl p-6 text-center bg-green-50 relative overflow-hidden" id="poopDropZone">
+            <input type="file" 
+                   id="poopFileInput" 
+                   class="hidden" 
+                   accept=".jpg,.jpeg,.png">
+            <button type="button" 
+                    onclick="document.getElementById('poopFileInput').click()" 
+                    class="bg-green-500 text-white px-6 py-3 rounded-full hover:bg-green-600 transform transition-all hover:scale-105 shadow-md">
+                + Add Photo
+            </button>
+            <p class="text-gray-600 mt-3">Upload a clear photo of your pet's poop for analysis</p>
+            <div class="paw-print text-6xl absolute -bottom-4 -right-4 opacity-5">💩</div>
+        </div>
+    </div>
+
     <!-- Analysis Results -->
     <div id="analysisResult" class="bg-white rounded-2xl p-6 shadow-lg mt-6 hidden">
         <h2 class="text-xl font-semibold mb-4 text-blue-800">Analysis Results</h2>
@@ -137,6 +157,22 @@
             </div>
             <div class="bg-green-50 p-4 rounded-xl">
                 <div id="followup-actions"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this for poop analysis results -->
+    <div id="poopAnalysisResult" class="bg-white rounded-2xl p-6 shadow-lg mt-6 hidden">
+        <h2 class="text-xl font-semibold mb-4 text-green-800">Poop Analysis Results</h2>
+        <div class="space-y-4">
+            <div class="bg-green-50 p-4 rounded-xl">
+                <div id="poopSummary"></div>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded-xl">
+                <div id="poopConcerns"></div>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-xl">
+                <div id="poopRecommendations"></div>
             </div>
         </div>
     </div>
