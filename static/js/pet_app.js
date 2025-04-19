@@ -431,3 +431,48 @@ function hideChatLoading() {
         loadingDiv.remove();
     }
 }
+
+function formatAnalysisResults(results) {
+    return `
+    <div class="space-y-6">
+        <div class="bg-blue-50 p-4 rounded-xl">
+            <h3 class="font-semibold text-blue-800 mb-2">📋 Synopsis</h3>
+            <div class="space-y-2">
+                <p><span class="font-medium">Key Findings:</span> ${results.key_findings}</p>
+                <p><span class="font-medium">Health Metrics:</span> ${results.health_metrics}</p>
+                <p><span class="font-medium">Medication:</span> ${results.medication}</p>
+            </div>
+        </div>
+
+        <div class="bg-purple-50 p-4 rounded-xl">
+            <h3 class="font-semibold text-purple-800 mb-2">🔍 Insights & Anomalies</h3>
+            <div class="space-y-2">
+                <p><span class="font-medium">Analysis:</span> ${results.analysis}</p>
+                <p><span class="font-medium">Patterns:</span> ${results.patterns}</p>
+                <p><span class="font-medium">Recommendations:</span> ${results.recommendations}</p>
+            </div>
+        </div>
+
+        <div class="bg-green-50 p-4 rounded-xl">
+            <h3 class="font-semibold text-green-800 mb-2">✅ Follow-up Actions</h3>
+            <div class="space-y-2">
+                <p><span class="font-medium">Next Steps:</span> ${results.next_steps}</p>
+                <p><span class="font-medium">Preventive Measures:</span> ${results.preventive}</p>
+                <p><span class="font-medium">Next Check-up:</span> ${results.next_checkup}</p>
+            </div>
+        </div>
+    </div>`;
+}
+
+function formatChatResponse(response) {
+    // Convert markdown-style bold (**text**) to HTML bold tags
+    response = response.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
+    
+    // Format lists with proper spacing and bullets
+    response = response.replace(/(\d+\.) /g, '<br>$1 ');
+    
+    return `
+    <div class="bg-white p-4 rounded-xl shadow-sm">
+        <p class="text-gray-700 leading-relaxed space-y-2">${response}</p>
+    </div>`;
+}
