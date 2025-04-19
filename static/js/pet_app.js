@@ -208,14 +208,20 @@ document.addEventListener('DOMContentLoaded', function() {
             
             showLoading('poop');
             
-            fetch('/analyze-poop', {
+            fetch('/analyze_poop', {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    addMessageToChat(data.analysis, 'assistant');
+                    document.getElementById('poopSummary').innerHTML = formatSection(data.result.summary);
+                    document.getElementById('poopConcerns').innerHTML = formatSection(data.result.concerns);
+                    document.getElementById('poopRecommendations').innerHTML = formatSection(data.result.recommendations);
+                    document.getElementById('poopAnalysisResult').classList.remove('hidden');
+                    
+                    // Scroll to results
+                    document.getElementById('poopAnalysisResult').scrollIntoView({ behavior: 'smooth' });
                 } else {
                     throw new Error(data.error || 'Failed to analyze image');
                 }
