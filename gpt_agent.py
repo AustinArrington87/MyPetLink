@@ -10,6 +10,9 @@ import json
 from datetime import datetime
 from database import get_db_connection
 from flask import session
+import base64
+import asyncio
+import PyPDF2
 
 # Basic logging setup
 logging.basicConfig(level=logging.INFO)
@@ -32,14 +35,28 @@ if not os.environ.get("OPENAI_API_KEY"):
     raise ValueError("OpenAI API key must be set in .env file")
 
 def extract_text_from_pdf(file_path):
-    """Extract text from PDF file"""
+    """Extract text from PDF file with fallback"""
     try:
-        images = convert_from_path(file_path)
-        text_content = []
-        for image in images:
-            text = pytesseract.image_to_string(image)
-            text_content.append(text)
-        return "\n\n".join(text_content)
+        # First try with pdf2image/poppler
+        try:
+            images = convert_from_path(file_path)
+            text_content = []
+            for image in images:
+                text = pytesseract.image_to_string(image)
+                text_content.append(text)
+            return "\n\n".join(text_content)
+        except Exception as poppler_error:
+            logger.warning(f"Poppler extraction failed: {poppler_error}, trying fallback method")
+            
+            # Fallback to direct PDF text extraction
+            text_content = []
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page in pdf_reader.pages:
+                    text_content.append(page.extract_text())
+            
+            return "\n\n".join(text_content)
+            
     except Exception as e:
         logger.error(f"PDF extraction error: {e}")
         return ""
@@ -47,6 +64,9 @@ def extract_text_from_pdf(file_path):
 def analyze_health_records(file_paths, document_type="vet_record"):
     """Analyze veterinary health records using GPT"""
     try:
+        # Get the pet record analysis prompt template ID
+        pet_record_prompt_id = '1df8bf0d-8567-4818-9485-694255d49674'  # Pet Record Analysis
+
         # Extract text from all files
         all_text = []
         for file_path in file_paths:
@@ -143,20 +163,19 @@ FOLLOW-UP ACTIONS
             if conn:
                 cur = conn.cursor()
                 
-                # Create a new chat session with UUID for user_id
                 session_id = str(uuid.uuid4())
-                default_user_id = str(uuid.uuid4())  # Generate UUID for user_id
+                default_user_id = str(uuid.uuid4())
                 
                 cur.execute("""
-                    INSERT INTO chat_sessions (id, user_id, created_at, pet_id, provider_id)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO chat_sessions 
+                    (id, user_id, created_at, prompt_template_id)
+                    VALUES (%s, %s, %s, %s)
                     RETURNING id
                 """, (
                     session_id, 
                     default_user_id, 
                     datetime.now(),
-                    default_user_id,  # Using same UUID for pet_id
-                    default_user_id   # Using same UUID for provider_id
+                    pet_record_prompt_id
                 ))
                 
                 conn.commit()
@@ -211,4 +230,76 @@ FOLLOW-UP ACTIONS
         return {
             'success': False,
             'error': str(e)
+        }
+
+async def analyze_poop_image(image_path):
+    """Analyze pet stool image using GPT-4 Vision"""
+    try:
+        # Read the image file
+        with open(image_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+
+        # Create a thread for the analysis
+        thread = client.beta.threads.create()
+        
+        # Create a message with the image
+        message = client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=[
+                {
+                    "type": "text",
+                    "text": "Please analyze this pet stool sample image. Consider color, consistency, and any visible abnormalities. Format the response in three sections: summary, concerns, and recommendations."
+                },
+                {
+                    "type": "image_file",
+                    "file_id": base64_image
+                }
+            ]
+        )
+
+        # Run the assistant
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id="asst_bYxIi1SefCRrdHSHfByUtNjd"  # Your assistant ID
+        )
+
+        # Wait for completion
+        while run.status != 'completed':
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+            if run.status == 'failed':
+                raise Exception("Analysis failed")
+            await asyncio.sleep(1)
+
+        # Get the response
+        messages = client.beta.threads.messages.list(thread_id=thread.id)
+        analysis = messages.data[0].content[0].text.value
+
+        # Parse sections
+        sections = analysis.split('\n\n')
+        result = {
+            'summary': '',
+            'concerns': '',
+            'recommendations': ''
+        }
+
+        for section in sections:
+            if section.startswith('Summary:'):
+                result['summary'] = section.replace('Summary:', '').strip()
+            elif section.startswith('Concerns:'):
+                result['concerns'] = section.replace('Concerns:', '').strip()
+            elif section.startswith('Recommendations:'):
+                result['recommendations'] = section.replace('Recommendations:', '').strip()
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Poop analysis error: {str(e)}")
+        return {
+            'summary': 'Error analyzing image',
+            'concerns': 'Unable to process the image',
+            'recommendations': 'Please try again with a clearer image'
         }
