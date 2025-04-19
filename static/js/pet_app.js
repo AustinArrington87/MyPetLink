@@ -494,10 +494,25 @@ async function useSuggestedPrompt(prompt) {
 function formatSection(content) {
     if (!content) return '';
     
-    return content
+    // First, clean up any markdown-style headers
+    let cleanContent = content
+        .replace(/###\s*\d*\.\s*/g, '')  // Remove markdown header numbers
+        .replace(/####\s*/g, '')         // Remove extra header marks
+        
+        // Format the main section headers
+        .replace(/(Training Tips|Exercise & Play|Enrichment Activities):/g, 
+            '<strong class="block text-lg text-purple-800 mb-3">$1</strong>')
+        
+        // Format subsection headers
+        .replace(/•\s*([^:]+):/g, 
+            '<strong class="block text-md text-gray-700 mt-3 mb-2">• $1:</strong>')
+        
+        // Format regular bullet points
+        .replace(/\n-\s/g, '<br>• ')
+        
+        // Handle line breaks and other formatting
         .replace(/\n\n/g, '<br><br>')
-        .replace(/\n•/g, '<br>•')
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium">$1</strong>')
-        .replace(/^(Training Tips:|Exercise & Play:|Enrichment Activities:)/gm, 
-            '<h4 class="text-lg font-medium mb-2">$1</h4>');
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium">$1</strong>');
+
+    return cleanContent;
 } 
