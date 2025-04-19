@@ -3,6 +3,52 @@
 {% block title %}Pet Profile{% endblock %}
 
 {% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f0f7ff 0%, #fff5f5 100%);
+        background-attachment: fixed;
+    }
+
+    .pet-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(66, 153, 225, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(66, 153, 225, 0.05) 0%, transparent 50%);
+    }
+
+    .health-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(72, 187, 120, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(72, 187, 120, 0.05) 0%, transparent 50%);
+    }
+
+    .location-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(159, 122, 234, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(159, 122, 234, 0.05) 0%, transparent 50%);
+    }
+
+    .save-button {
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+        box-shadow: 0 4px 14px rgba(66, 153, 225, 0.4);
+    }
+
+    .save-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(66, 153, 225, 0.6);
+    }
+
+    .input-field {
+        transition: all 0.3s ease;
+    }
+
+    .input-field:focus {
+        transform: scale(1.02);
+    }
+</style>
+
 <div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
         <a href="{{ url_for('home') }}">
@@ -14,86 +60,134 @@
     </div>
 </div>
 
-<div class="max-w-4xl mx-auto mt-20">
-    <h1 class="text-3xl font-bold mb-8">Pet Profile</h1>
+<div class="max-w-4xl mx-auto mt-20 px-4">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">🐾 Pet Profile 🐾</h1>
+        <p class="text-gray-600 mt-2">Tell us about your furry (or scaly!) friend</p>
+    </div>
     
-    <div class="bg-white shadow-md rounded-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Basic Info</h2>
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Pet Name</label>
+    <!-- Basic Info Card -->
+    <div class="pet-card rounded-2xl p-6 shadow-lg border-2 border-blue-100 mb-6 transform transition-transform hover:scale-[1.01]">
+        <div class="flex items-center mb-4">
+            <span class="text-2xl mr-2">🦮</span>
+            <h2 class="text-xl font-semibold text-blue-800">Who's This Cutie?</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+                <label class="block text-gray-700 text-sm font-medium">Pet's Name</label>
                 <input type="text" id="petName" value="{{ pet.name if pet else '' }}" 
-                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                       class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors"
+                       placeholder="What's their name?">
             </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Species</label>
-                <select id="petType" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
-                    <option value="">Select species</option>
-                    <option value="dog">Dog</option>
-                    <option value="cat">Cat</option>
-                    <option value="bird">Bird</option>
-                    <option value="reptile">Reptile</option>
-                    <option value="fish">Fish</option>
-                    <option value="rabbit">Rabbit</option>
-                    <option value="ferret">Ferret</option>
-                    <option value="farm animal">Farm Animal</option>
+            <div class="space-y-2">
+                <label class="block text-gray-700 text-sm font-medium">Species</label>
+                <select id="petType" 
+                        class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
+                    <option value="">What kind of pet are they?</option>
+                    <option value="dog">🐕 Dog</option>
+                    <option value="cat">🐱 Cat</option>
+                    <option value="bird">🦜 Bird</option>
+                    <option value="reptile">🦎 Reptile</option>
+                    <option value="fish">🐠 Fish</option>
+                    <option value="rabbit">🐰 Rabbit</option>
+                    <option value="ferret">🦦 Ferret</option>
+                    <option value="farm animal">🐮 Farm Animal</option>
                 </select>
             </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Breed</label>
-                <select id="breedSelect" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+            <div class="space-y-2">
+                <label class="block text-gray-700 text-sm font-medium">Breed</label>
+                <select id="breedSelect" 
+                        class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
                     <option value="">Select species first</option>
                 </select>
             </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Age</label>
-                <div class="flex gap-2">
-                    <input type="number" id="ageYears" placeholder="Years" min="0" max="30"
-                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
-                    <input type="number" id="ageMonths" placeholder="Months" min="0" max="11"
-                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+            <div class="space-y-2">
+                <label class="block text-gray-700 text-sm font-medium">Age</label>
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <input type="number" id="ageYears" placeholder="Years" min="0" max="30"
+                               class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
+                        <span class="text-sm text-gray-500">Years</span>
+                    </div>
+                    <div class="flex-1">
+                        <input type="number" id="ageMonths" placeholder="Months" min="0" max="11"
+                               class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
+                        <span class="text-sm text-gray-500">Months</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="bg-white shadow-md rounded-lg p-6 mt-6">
-        <h2 class="text-xl font-semibold mb-4">Health Information</h2>
-        <div class="space-y-4">
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Weight (lbs)</label>
+    <!-- Health Info Card -->
+    <div class="health-card rounded-2xl p-6 shadow-lg border-2 border-green-100 mb-6 transform transition-transform hover:scale-[1.01]">
+        <div class="flex items-center mb-4">
+            <span class="text-2xl mr-2">💚</span>
+            <h2 class="text-xl font-semibold text-green-800">Health Details</h2>
+        </div>
+        <div class="space-y-6">
+            <div class="space-y-2">
+                <label class="block text-gray-700 text-sm font-medium">Weight (lbs)</label>
                 <input type="number" id="weight" step="0.1" min="0"
-                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                       class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors"
+                       placeholder="How much do they weigh?">
             </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Health Conditions</label>
+            <div class="space-y-2">
+                <label class="block text-gray-700 text-sm font-medium">Health Notes</label>
                 <textarea id="healthConditions" rows="3"
-                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight"
-                         placeholder="List any ongoing health conditions..."></textarea>
+                         class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors"
+                         placeholder="Any ongoing health conditions or special care needs?"></textarea>
             </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Last Checkup Date</label>
+            <div class="space-y-2">
+                <label class="block text-gray-700 text-sm font-medium">Last Vet Visit</label>
                 <input type="date" id="lastCheckup"
-                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                       class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors">
             </div>
         </div>
     </div>
 
-    <div class="bg-white shadow-md rounded-lg p-6 mt-6">
-        <h2 class="text-xl font-semibold mb-4">Location</h2>
-        <div>
-            <label class="block text-gray-700 text-sm font-bold mb-2">State</label>
-            <select id="state" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
-                <option value="">Select state</option>
-                <!-- Add all US states -->
-            </select>
+    <!-- Location Section -->
+    <div class="location-card rounded-xl shadow-lg p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-purple-800 flex items-center">
+            <span class="text-2xl mr-2">📍</span> Location
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">State</label>
+                <select id="state" name="state" class="input-field w-full p-2 border rounded-lg">
+                    <option value="">Select State</option>
+                    <option value="AL">Alabama</option>
+                    <option value="AK">Alaska</option>
+                    <option value="AZ">Arizona</option>
+                    <option value="CA">California</option>
+                    <!-- Add all states -->
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <select id="city" name="city" class="input-field w-full p-2 border rounded-lg">
+                    <option value="">Select City</option>
+                    <!-- Cities will be populated based on state selection -->
+                </select>
+            </div>
+        </div>
+
+        <!-- Nearby Vets Section -->
+        <div class="mt-6">
+            <h3 class="text-lg font-medium mb-4 text-purple-700">Nearby Veterinary Clinics</h3>
+            <div id="nearby-vets" class="space-y-4">
+                <!-- Vets will be populated here -->
+            </div>
         </div>
     </div>
 
-    <div class="mt-6">
+    <!-- Save Button -->
+    <div class="text-center mb-8">
         <button onclick="saveProfile()" 
-                class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-            Save Profile
+                class="save-button text-white px-8 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-600">
+            🐾 Save Profile
         </button>
     </div>
 </div>
@@ -126,7 +220,8 @@ function saveProfile() {
         weight: document.getElementById('weight').value,
         health_conditions: document.getElementById('healthConditions').value,
         last_checkup: document.getElementById('lastCheckup').value,
-        state: document.getElementById('state').value
+        state: document.getElementById('state').value,
+        city: document.getElementById('city').value
     };
 
     fetch('/update_pet_profile', {
