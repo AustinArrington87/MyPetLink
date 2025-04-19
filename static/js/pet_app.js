@@ -34,18 +34,43 @@ const suggestedPrompts = {
             "How can I stop my cat from scratching furniture?",
             "Tips for introducing a new cat?"
         ]
+    },
+    analysis: {
+        general: [
+            "Can you explain what these results mean?",
+            "What should I watch out for?",
+            "How serious are these findings?"
+        ],
+        medication: [
+            "What are the side effects of this medication?",
+            "How should I administer the medication?",
+            "Can I give other medications at the same time?"
+        ],
+        followup: [
+            "When should I schedule the next checkup?",
+            "What preventive care is recommended?",
+            "Should I monitor anything specific?"
+        ]
     }
 };
 
 // Basic utilities
 function showLoading() {
     const loadingState = document.getElementById('loadingState');
-    if (loadingState) loadingState.classList.remove('hidden');
+    const randomGif = loadingGifs[Math.floor(Math.random() * loadingGifs.length)];
+    
+    loadingState.innerHTML = `
+        <div class="bg-white p-4 rounded-lg shadow-xl text-center">
+            <img src="${randomGif}" alt="Loading..." class="mx-auto h-24 w-24 object-contain mb-2">
+            <p class="text-gray-600 text-sm">Analyzing documents...</p>
+        </div>
+    `;
+    
+    loadingState.classList.remove('hidden');
 }
 
 function hideLoading() {
-    const loadingState = document.getElementById('loadingState');
-    if (loadingState) loadingState.classList.add('hidden');
+    document.getElementById('loadingState').classList.add('hidden');
 }
 
 // Tab switching functionality
@@ -86,8 +111,7 @@ function handleFiles(files) {
         formData.append('files[]', file);
     }
 
-    // Show loading state
-    document.getElementById('loadingState').classList.remove('hidden');
+    showLoading();
 
     fetch('/upload', {
         method: 'POST',
@@ -101,6 +125,11 @@ function handleFiles(files) {
             document.getElementById('insights-anomalies').innerHTML = data.result.insights_anomalies;
             document.getElementById('followup-actions').innerHTML = data.result.followup_actions;
             analysisResult.classList.remove('hidden');
+            
+            // Generate and display dynamic prompts based on the analysis
+            const dynamicPrompts = generateDynamicPrompts(data.result);
+            displayPrompts(dynamicPrompts);
+            
             analysisResult.scrollIntoView({ behavior: 'smooth' });
         } else {
             throw new Error(data.error || 'Failed to analyze documents');
@@ -111,7 +140,7 @@ function handleFiles(files) {
         alert('Error analyzing documents: ' + error.message);
     })
     .finally(() => {
-        document.getElementById('loadingState').classList.add('hidden');
+        hideLoading();
     });
 }
 
@@ -188,6 +217,62 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Add chat form submission handler
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const chatInput = document.getElementById('chat-input');
+            const message = chatInput.value.trim();
+            
+            if (!message) return;
+
+            // Add user message to chat
+            addMessageToChat(message, 'user');
+            
+            // Clear input
+            chatInput.value = '';
+
+            // Show chat loading indicator
+            showChatLoading();
+
+            // Send message to backend
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    hideChatLoading();
+                    addMessageToChat(data.response, 'assistant');
+                    
+                    // If there's a medical error risk, show warning
+                    if (data.medical_error_risk) {
+                        addMessageToChat('⚠️ Note: This information is for general guidance only. Please consult with your veterinarian for specific medical advice.', 'assistant');
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to get response');
+                }
+            })
+            .catch(error => {
+                console.error('Chat error:', error);
+                hideChatLoading();
+                addMessageToChat('Sorry, I encountered an error. Please try again.', 'assistant');
+            })
+            .finally(() => {
+                // Scroll to bottom of chat
+                const chatMessages = document.getElementById('chat-messages');
+                if (chatMessages) {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            });
+        });
+    }
 });
 
 // Chat functionality
@@ -251,4 +336,98 @@ document.getElementById('petType').addEventListener('change', function() {
                 breeds.map(breed => `<option value="${breed}">${breed}</option>`).join('');
         })
         .catch(error => console.error('Error loading breeds:', error));
-}); 
+});
+
+// Add function to generate dynamic prompts based on analysis
+function generateDynamicPrompts(analysisData) {
+    const dynamicPrompts = [];
+    
+    // Extract key terms from the analysis
+    const allText = (analysisData.synopsis + ' ' + 
+                    analysisData.insights_anomalies + ' ' + 
+                    analysisData.followup_actions).toLowerCase();
+
+    // Check for specific conditions and add relevant prompts
+    if (allText.includes('medication') || allText.includes('prescribed')) {
+        dynamicPrompts.push(...suggestedPrompts.analysis.medication);
+    }
+    
+    if (allText.includes('follow') || allText.includes('next visit')) {
+        dynamicPrompts.push(...suggestedPrompts.analysis.followup);
+    }
+
+    // Add condition-specific prompts
+    if (allText.includes('blood')) {
+        dynamicPrompts.push("What do these blood test results mean?");
+    }
+    if (allText.includes('diet') || allText.includes('food')) {
+        dynamicPrompts.push("What diet changes are recommended?");
+    }
+    if (allText.includes('weight')) {
+        dynamicPrompts.push("How can I help manage my pet's weight?");
+    }
+    if (allText.includes('dental') || allText.includes('teeth')) {
+        dynamicPrompts.push("What dental care is needed?");
+    }
+
+    // Always add some general analysis prompts
+    dynamicPrompts.push(...suggestedPrompts.analysis.general);
+
+    return dynamicPrompts;
+}
+
+// Function to display prompts
+function displayPrompts(prompts) {
+    const promptsContainer = document.getElementById('suggestedPrompts');
+    if (!promptsContainer) return;
+
+    promptsContainer.innerHTML = prompts.map(prompt => `
+        <button onclick="useSuggestedPrompt('${prompt}')" 
+                class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-sm px-3 py-1 rounded-full transition-colors">
+            ${prompt}
+        </button>
+    `).join('');
+}
+
+// Update the useSuggestedPrompt function
+function useSuggestedPrompt(prompt) {
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput && chatForm) {
+        chatInput.value = prompt;
+        // Create and dispatch submit event
+        const submitEvent = new Event('submit', {
+            'bubbles': true,
+            'cancelable': true
+        });
+        chatForm.dispatchEvent(submitEvent);
+    }
+}
+
+// Add a new function for chat loading indicator
+function showChatLoading() {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'chat-loading';
+    loadingDiv.className = 'bg-blue-50 p-4 rounded-lg flex items-center gap-2';
+    loadingDiv.innerHTML = `
+        <div class="flex gap-1">
+            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+        </div>
+        <span class="text-gray-600 text-sm">Thinking...</span>
+    `;
+    
+    chatMessages.appendChild(loadingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function hideChatLoading() {
+    const loadingDiv = document.getElementById('chat-loading');
+    if (loadingDiv) {
+        loadingDiv.remove();
+    }
+}
