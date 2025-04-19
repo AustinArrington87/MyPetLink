@@ -559,5 +559,96 @@ def get_breeds(pet_type):
     }
     return jsonify(breeds.get(pet_type, []))
 
+@app.route('/get_training_tips', methods=['POST'])
+def get_training_tips():
+    try:
+        data = request.json
+        species = data.get('species')
+        breed = data.get('breed')
+        
+        if not species or not breed:
+            return jsonify({'success': False, 'error': 'Species and breed are required'}), 400
+
+        # Create thread for GPT
+        thread = client.beta.threads.create()
+        
+        # Create the prompt
+        message = client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=f"""Please provide comprehensive training and play tips for a {breed} {species}. 
+            Format your response in three sections:
+
+            1. Training Tips:
+            • Basic obedience and commands
+            • Common behavioral challenges
+            • Training methods that work best for this breed
+
+            2. Exercise & Play:
+            • Exercise requirements
+            • Recommended activities
+            • Play style preferences
+
+            3. Enrichment Activities:
+            • Mental stimulation ideas
+            • Interactive toys
+            • Breed-specific enrichment suggestions"""
+        )
+
+        # Run the assistant
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id="asst_bYxIi1SefCRrdHSHfByUtNjd"
+        )
+
+        # Wait for completion
+        while True:
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+            if run.status == 'completed':
+                break
+            elif run.status == 'failed':
+                raise Exception("Failed to generate training tips")
+
+        # Get the response
+        messages = client.beta.threads.messages.list(thread_id=thread.id)
+        response = messages.data[0].content[0].text.value
+
+        # Parse sections
+        sections = response.split('\n\n')
+        result = {
+            'training': '',
+            'play': '',
+            'enrichment': ''
+        }
+
+        current_section = None
+        for section in sections:
+            if 'Training Tips:' in section:
+                current_section = 'training'
+                result['training'] = section
+            elif 'Exercise & Play:' in section:
+                current_section = 'play'
+                result['play'] = section
+            elif 'Enrichment Activities:' in section:
+                current_section = 'enrichment'
+                result['enrichment'] = section
+            elif current_section:
+                result[current_section] += '\n' + section
+
+        return jsonify({
+            'success': True,
+            'result': result
+        })
+
+    except Exception as e:
+        logger.error(f"Training tips error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001, use_reloader=True)
