@@ -143,13 +143,15 @@ FOLLOW-UP ACTIONS
             if conn:
                 cur = conn.cursor()
                 
-                # Create a new chat session with a default user_id
+                # Create a new chat session with UUID for user_id
                 session_id = str(uuid.uuid4())
+                default_user_id = str(uuid.uuid4())  # Generate UUID for user_id
+                
                 cur.execute("""
                     INSERT INTO chat_sessions (id, user_id, created_at)
                     VALUES (%s, %s, %s)
                     RETURNING id
-                """, (session_id, 1, datetime.now()))  # Using default user_id=1
+                """, (session_id, default_user_id, datetime.now()))  # Use UUID instead of integer
                 
                 conn.commit()
                 
@@ -180,6 +182,7 @@ FOLLOW-UP ACTIONS
             logger.error(f"Database error: {str(db_error)}")
             # Continue even if database save fails
 
+        # Always return the analysis results, even if database save fails
         return {
             'success': True,
             'result': {
