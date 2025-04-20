@@ -64,7 +64,8 @@ function showLoading(context = 'documents') {
         documents: 'Analyzing documents...',
         chat: 'Thinking...',
         poop: 'Analyzing image...',
-        training: 'Generating training tips...'
+        training: 'Generating training tips...',
+        rescue: 'Submitting report...'
     };
     
     loadingState.innerHTML = `
@@ -343,6 +344,59 @@ document.addEventListener('DOMContentLoaded', function() {
             hideLoading();
         }
     };
+
+    // Add rescue form handler
+    const rescueForm = document.getElementById('rescueForm');
+    if (rescueForm) {
+        rescueForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log('Form submitted');  // Debug log
+            
+            const formData = {
+                location: document.getElementById('rescueLocation').value,
+                species: document.getElementById('rescueSpecies').value,
+                breed: document.getElementById('rescueBreed').value,
+                description: document.getElementById('rescueDescription').value,
+                email: document.getElementById('rescueEmail').value
+            };
+
+            console.log('Form data:', formData);  // Debug log
+
+            try {
+                showLoading('rescue');
+                console.log('Sending request to /report-rescue');  // Debug log
+                
+                const response = await fetch('/report-rescue', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                console.log('Response received:', response);  // Debug log
+                const data = await response.json();
+                console.log('Response data:', data);  // Debug log
+                
+                hideLoading();
+                
+                if (data.success) {
+                    alert(data.message);
+                    if (data.warning) {
+                        console.warn('Warning:', data.warning);
+                    }
+                    closeRescueForm();
+                    document.getElementById('rescueForm').reset();
+                } else {
+                    throw new Error(data.error || 'Failed to submit report');
+                }
+            } catch (error) {
+                hideLoading();
+                console.error('Submission error:', error);  // More detailed error log
+                alert('Error submitting report: ' + error.message);
+            }
+        });
+    }
 });
 
 // Chat functionality
@@ -535,60 +589,37 @@ function closeRescueForm() {
 
 function getCurrentLocation() {
     if (navigator.geolocation) {
+        // Show searching message
+        const locationInput = document.getElementById('rescueLocation');
+        const originalPlaceholder = locationInput.placeholder;
+        locationInput.placeholder = '📍 Searching for your location...';
+        locationInput.disabled = true;
+
         navigator.geolocation.getCurrentPosition(
             position => {
                 // Get address from coordinates using reverse geocoding
                 fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`)
                     .then(response => response.json())
                     .then(data => {
-                        document.getElementById('rescueLocation').value = data.display_name;
+                        locationInput.value = data.display_name;
+                        locationInput.disabled = false;
+                        locationInput.placeholder = originalPlaceholder;
                     })
                     .catch(error => {
                         console.error('Error getting location:', error);
                         alert('Could not get address. Please enter manually.');
+                        locationInput.disabled = false;
+                        locationInput.placeholder = originalPlaceholder;
                     });
             },
             error => {
                 console.error('Error:', error);
                 alert('Could not get location. Please enter address manually.');
+                locationInput.disabled = false;
+                locationInput.placeholder = originalPlaceholder;
             }
         );
     } else {
         alert('Geolocation is not supported by your browser');
     }
-}
-
-// Add form submission handler
-document.getElementById('rescueForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const formData = {
-        location: document.getElementById('rescueLocation').value,
-        species: document.getElementById('rescueSpecies').value,
-        breed: document.getElementById('rescueBreed').value,
-        description: document.getElementById('rescueDescription').value,
-        email: document.getElementById('rescueEmail').value
-    };
-
-    try {
-        const response = await fetch('/report-rescue', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        });
-
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('Report submitted successfully! We will contact you soon.');
-            closeRescueForm();
-        } else {
-            throw new Error(data.error || 'Failed to submit report');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error submitting report. Please try again.');
-    }
-}); 
+} 
