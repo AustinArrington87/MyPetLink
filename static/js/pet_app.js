@@ -350,9 +350,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (rescueForm) {
         rescueForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            console.log('Form submitted');  // Debug log
             
             const formData = {
+                name: document.getElementById('rescueName').value,
+                phone: document.getElementById('rescuePhone').value,
                 location: document.getElementById('rescueLocation').value,
                 species: document.getElementById('rescueSpecies').value,
                 breed: document.getElementById('rescueBreed').value,
@@ -360,11 +361,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 email: document.getElementById('rescueEmail').value
             };
 
-            console.log('Form data:', formData);  // Debug log
-
             try {
                 showLoading('rescue');
-                console.log('Sending request to /report-rescue');  // Debug log
                 
                 const response = await fetch('/report-rescue', {
                     method: 'POST',
@@ -374,25 +372,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: JSON.stringify(formData)
                 });
 
-                console.log('Response received:', response);  // Debug log
                 const data = await response.json();
-                console.log('Response data:', data);  // Debug log
-                
                 hideLoading();
                 
                 if (data.success) {
-                    alert(data.message);
-                    if (data.warning) {
-                        console.warn('Warning:', data.warning);
-                    }
                     closeRescueForm();
                     document.getElementById('rescueForm').reset();
+                    document.getElementById('successMessage').classList.remove('hidden');
                 } else {
                     throw new Error(data.error || 'Failed to submit report');
                 }
             } catch (error) {
                 hideLoading();
-                console.error('Submission error:', error);  // More detailed error log
+                console.error('Submission error:', error);
                 alert('Error submitting report: ' + error.message);
             }
         });
@@ -622,4 +614,9 @@ function getCurrentLocation() {
     } else {
         alert('Geolocation is not supported by your browser');
     }
+}
+
+// Add this function
+function closeSuccessMessage() {
+    document.getElementById('successMessage').classList.add('hidden');
 } 
