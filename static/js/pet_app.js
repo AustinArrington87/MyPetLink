@@ -521,4 +521,74 @@ function formatSection(content) {
         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium">$1</strong>');
 
     return cleanContent;
-} 
+}
+
+// Add these functions to pet_app.js
+
+function openRescueForm() {
+    document.getElementById('rescueFormModal').classList.remove('hidden');
+}
+
+function closeRescueForm() {
+    document.getElementById('rescueFormModal').classList.add('hidden');
+}
+
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                // Get address from coordinates using reverse geocoding
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('rescueLocation').value = data.display_name;
+                    })
+                    .catch(error => {
+                        console.error('Error getting location:', error);
+                        alert('Could not get address. Please enter manually.');
+                    });
+            },
+            error => {
+                console.error('Error:', error);
+                alert('Could not get location. Please enter address manually.');
+            }
+        );
+    } else {
+        alert('Geolocation is not supported by your browser');
+    }
+}
+
+// Add form submission handler
+document.getElementById('rescueForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        location: document.getElementById('rescueLocation').value,
+        species: document.getElementById('rescueSpecies').value,
+        breed: document.getElementById('rescueBreed').value,
+        description: document.getElementById('rescueDescription').value,
+        email: document.getElementById('rescueEmail').value
+    };
+
+    try {
+        const response = await fetch('/report-rescue', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Report submitted successfully! We will contact you soon.');
+            closeRescueForm();
+        } else {
+            throw new Error(data.error || 'Failed to submit report');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error submitting report. Please try again.');
+    }
+}); 
