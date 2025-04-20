@@ -1,10 +1,28 @@
+# Core Flask requirements
 flask[async]
 openai
 python-dotenv
+
+# Image processing
 pytesseract
 pdf2image
 Pillow
+pyheif
+
+# Database
 psycopg2-binary
+
+# PDF generation
 reportlab
+
+# File handling
 werkzeug
-PyPDF2 
+PyPDF2
+
+# Google API
+google-auth
+google-api-python-client
+google-auth-httplib2  # Add this for HTTP client support
+
+# Async support
+asyncio  # Add this for async operations 
