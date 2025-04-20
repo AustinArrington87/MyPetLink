@@ -26,6 +26,8 @@ import asyncio
 from functools import partial
 import base64
 from email.mime.text import MIMEText
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -55,6 +57,22 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def get_gmail_service():
+    """Get Gmail service using credentials.json"""
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+            'credentials.json',
+            scopes=['https://www.googleapis.com/auth/gmail.send']
+        )
+        
+        # Add user impersonation
+        delegated_credentials = credentials.with_subject('austin@plantgroup.co')
+        
+        return build('gmail', 'v1', credentials=delegated_credentials)
+    except Exception as e:
+        logger.error(f"Error creating Gmail service: {str(e)}")
+        raise
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -659,6 +677,8 @@ def get_training_tips():
 
 @app.route('/report-rescue', methods=['POST'])
 def report_rescue():
+    logger.info("Received rescue report request")
+    
     try:
         data = request.json
         
@@ -672,31 +692,42 @@ def report_rescue():
         Health Issues/Situation:
         {data['description']}
         
-        Reporter Email: {data['email']}
+        Reporter Email: {data['email'] or 'Not provided'}
         
         Reported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         """
         
-        service = get_gmail_service()
-        
-        message = MIMEText(body)
-        message['to'] = 'rescue@yourorganization.com'  # Change this to your rescue email
-        message['from'] = 'noreply@yourorganization.com'  # Change this to your sender email
-        message['subject'] = f"🆘 New Rescue Animal Report - {data['species']}"
-        
-        # Encode and send the email
-        raw = base64.urlsafe_b64encode(message.as_bytes())
-        raw = raw.decode()
-        
-        service.users().messages().send(
-            userId='me',
-            body={'raw': raw}
-        ).execute()
-        
-        return jsonify({'success': True})
+        try:
+            message = MIMEText(body)
+            message['to'] = 'austin@plantgroup.co'
+            message['from'] = 'austin@plantgroup.co'
+            message['subject'] = f"🆘 New Rescue Animal Report - {data['species'].title()}"
+            
+            raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+            
+            service = get_gmail_service()
+            service.users().messages().send(userId='me', body={'raw': raw}).execute()
+            
+            logger.info("Rescue report email sent successfully")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Your rescue report has been submitted successfully. Thank you for helping!'
+            })
+            
+        except Exception as email_error:
+            logger.error(f"Email error: {str(email_error)}")
+            return jsonify({
+                'success': False,
+                'error': 'Failed to submit report. Please try again or contact support.'
+            }), 500
+            
     except Exception as e:
-        print(f"Error sending rescue report: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logger.error(f"Request processing error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to submit report. Please try again or contact support.'
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001, use_reloader=True)
