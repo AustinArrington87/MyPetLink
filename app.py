@@ -24,6 +24,8 @@ import time
 import pyheif
 import asyncio
 from functools import partial
+import base64
+from email.mime.text import MIMEText
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -654,6 +656,47 @@ def get_training_tips():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/report-rescue', methods=['POST'])
+def report_rescue():
+    try:
+        data = request.json
+        
+        body = f"""
+        🆘 Rescue Animal Report
+
+        Location: {data['location']}
+        Species: {data['species']}
+        Breed: {data['breed'] or 'Not specified'}
+        
+        Health Issues/Situation:
+        {data['description']}
+        
+        Reporter Email: {data['email']}
+        
+        Reported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        """
+        
+        service = get_gmail_service()
+        
+        message = MIMEText(body)
+        message['to'] = 'rescue@yourorganization.com'  # Change this to your rescue email
+        message['from'] = 'noreply@yourorganization.com'  # Change this to your sender email
+        message['subject'] = f"🆘 New Rescue Animal Report - {data['species']}"
+        
+        # Encode and send the email
+        raw = base64.urlsafe_b64encode(message.as_bytes())
+        raw = raw.decode()
+        
+        service.users().messages().send(
+            userId='me',
+            body={'raw': raw}
+        ).execute()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error sending rescue report: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001, use_reloader=True)
