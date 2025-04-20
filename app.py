@@ -685,16 +685,22 @@ def report_rescue():
         body = f"""
         🆘 Rescue Animal Report
 
-        Location: {data['location']}
+        📱 Contact Information
+        Name: {data['name']}
+        Phone: {data['phone']}
+        Email: {data['email'] or 'Not provided'}
+
+        📍 Location Information
+        Address: {data['location']}
+        
+        🐾 Animal Details
         Species: {data['species']}
         Breed: {data['breed'] or 'Not specified'}
         
-        Health Issues/Situation:
+        ⚕️ Health Issues/Situation:
         {data['description']}
         
-        Reporter Email: {data['email'] or 'Not provided'}
-        
-        Reported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        ⏰ Reported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         """
         
         try:
