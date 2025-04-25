@@ -775,5 +775,45 @@ def report_rescue():
 # Note: Gmail code has been removed. If you want to re-enable it later, 
 # it can be added back after the database operation succeeds.
 
+@app.route('/search-rescues', methods=['GET'])
+def search_rescues():
+    try:
+        zipcode = request.args.get('zipcode', '').strip()
+        
+        if not zipcode or not zipcode.isdigit() or len(zipcode) != 5:
+            return jsonify({
+                'success': False,
+                'error': 'Please provide a valid 5-digit zipcode'
+            }), 400
+        
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cur.execute("""
+                SELECT id, species, breed, description, date, ticket_name, 
+                       contact_name, contact_phone, contact_email, contact_address, zipcode
+                FROM rescue_tickets 
+                WHERE zipcode = %s
+                ORDER BY date DESC
+            """, (zipcode,))
+            
+            rescues = cur.fetchall()
+            
+            cur.close()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'rescues': rescues
+            })
+            
+    except Exception as e:
+        logger.error(f"Error searching rescues: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to search rescues. Please try again.'
+        }), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001, use_reloader=True)
