@@ -176,7 +176,31 @@ def home():
     # Get user name from session, default to "Guest" if not found
     user_name = session.get('user_name', 'Guest')
     is_authenticated = 'profile' in session
-    return render_template('home.html', user_name=user_name, is_authenticated=is_authenticated)
+    
+    # Get pet information for authenticated users
+    pets = []
+    active_pet = {}
+    if is_authenticated:
+        pets = session.get('pets', [])
+        active_pet_id = session.get('active_pet_id')
+        
+        # Find active pet data
+        if active_pet_id:
+            for pet in pets:
+                if pet.get('id') == active_pet_id:
+                    active_pet = pet
+                    break
+        
+        # If active pet isn't set but there's a pet, use the first one
+        if not active_pet and pets:
+            active_pet = pets[0]
+            session['active_pet_id'] = active_pet.get('id')
+    
+    return render_template('home.html', 
+                          user_name=user_name, 
+                          is_authenticated=is_authenticated,
+                          pets=pets,
+                          active_pet=active_pet)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -229,18 +253,73 @@ def upload_file():
 @app.route('/profile')
 @requires_auth
 def profile():
-    # Get pet profile from session or use empty dict
-    pet_data = session.get('pet_profile', {})
+    # Get user profile data
     user_profile = session.get('profile', {})
-    return render_template('profile.html', pet=pet_data, user_profile=user_profile)
+    
+    # Get list of pets and active pet
+    pets = session.get('pets', [])
+    active_pet_id = session.get('active_pet_id')
+    
+    # Find active pet data
+    active_pet = {}
+    if active_pet_id:
+        for pet in pets:
+            if pet.get('id') == active_pet_id:
+                active_pet = pet
+                break
+    
+    # For backward compatibility, also check old pet_profile format
+    if not active_pet and session.get('pet_profile'):
+        old_pet = session.get('pet_profile', {})
+        # Convert old format to new format
+        if old_pet:
+            pet_id = str(uuid.uuid4())
+            new_pet = {
+                'id': pet_id,
+                'name': old_pet.get('name', ''),
+                'species': old_pet.get('species', ''),
+                'breed': old_pet.get('breed', ''),
+                'age': old_pet.get('age', ''),
+                'weight': old_pet.get('weight', ''),
+                'health_conditions': old_pet.get('health_conditions', ''),
+                'last_checkup': old_pet.get('last_checkup', ''),
+                'state': old_pet.get('state', ''),
+                'city': old_pet.get('city', ''),
+                'avatar': '',
+                'vet_clinic': old_pet.get('vet_clinic', ''),
+                'vet_phone': old_pet.get('vet_phone', ''),
+                'vet_address': old_pet.get('vet_address', '')
+            }
+            
+            # Add to pets list
+            if 'pets' not in session:
+                session['pets'] = []
+            session['pets'].append(new_pet)
+            session['active_pet_id'] = pet_id
+            
+            # Now get the updated data
+            pets = session.get('pets', [])
+            active_pet_id = pet_id
+            active_pet = new_pet
+                
+    # Check if this is first pet onboarding
+    is_first_pet = len(pets) == 0
+    
+    return render_template('profile.html', 
+                          active_pet=active_pet,
+                          pets=pets,
+                          is_first_pet=is_first_pet,
+                          user_profile=user_profile)
 
 @app.route('/update_pet_profile', methods=['POST'])
 def update_pet_profile():
     try:
         data = request.json
         
-        # Store in session for now (can add database storage later)
-        session['pet_profile'] = {
+        # Create a pet profile with UUID
+        pet_id = data.get('pet_id') or str(uuid.uuid4())
+        pet_profile = {
+            'id': pet_id,
             'name': data.get('pet_name'),
             'species': data.get('species'),
             'breed': data.get('breed'),
@@ -248,12 +327,112 @@ def update_pet_profile():
             'weight': data.get('weight'),
             'health_conditions': data.get('health_conditions'),
             'last_checkup': data.get('last_checkup'),
-            'state': data.get('state')
+            'state': data.get('state'),
+            'city': data.get('city'),
+            'avatar': data.get('avatar', ''),
+            'vet_clinic': data.get('vet_clinic', ''),
+            'vet_phone': data.get('vet_phone', ''),
+            'vet_address': data.get('vet_address', '')
         }
         
-        return jsonify({'success': True})
+        # Initialize pets list if it doesn't exist
+        if 'pets' not in session:
+            session['pets'] = []
+            
+        # Update existing pet or add new one
+        updated = False
+        for i, pet in enumerate(session['pets']):
+            if pet.get('id') == pet_id:
+                session['pets'][i] = pet_profile
+                updated = True
+                break
+                
+        if not updated:
+            session['pets'].append(pet_profile)
+        
+        # Set active pet
+        session['active_pet_id'] = pet_id
+        
+        return jsonify({
+            'success': True,
+            'pet_id': pet_id,
+            'is_first_pet': len(session['pets']) == 1
+        })
     except Exception as e:
         logger.error(f"Profile update error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/get_pets', methods=['GET'])
+@requires_auth
+def get_pets():
+    try:
+        pets = session.get('pets', [])
+        active_pet_id = session.get('active_pet_id')
+        return jsonify({
+            'success': True,
+            'pets': pets,
+            'active_pet_id': active_pet_id
+        })
+    except Exception as e:
+        logger.error(f"Error fetching pets: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
+@app.route('/set_active_pet/<pet_id>', methods=['POST'])
+@requires_auth
+def set_active_pet(pet_id):
+    try:
+        pets = session.get('pets', [])
+        pet_exists = any(pet.get('id') == pet_id for pet in pets)
+        
+        if not pet_exists:
+            return jsonify({'success': False, 'error': 'Pet not found'}), 404
+            
+        session['active_pet_id'] = pet_id
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error setting active pet: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/generate_pet_avatar', methods=['POST'])
+@requires_auth
+def generate_pet_avatar():
+    try:
+        data = request.json
+        species = data.get('species', '')
+        breed = data.get('breed', '')
+        pet_name = data.get('pet_name', '')
+        
+        # For a real implementation, this would call a generative AI API
+        # For now, just return a placeholder based on species
+        placeholder_avatars = {
+            'dog': '/static/img/avatars/dog_avatar.png',
+            'cat': '/static/img/avatars/cat_avatar.png',
+            'bird': '/static/img/avatars/bird_avatar.png',
+            'reptile': '/static/img/avatars/reptile_avatar.png',
+            'fish': '/static/img/avatars/fish_avatar.png',
+            'rabbit': '/static/img/avatars/rabbit_avatar.png',
+            'ferret': '/static/img/avatars/ferret_avatar.png',
+            'farm animal': '/static/img/avatars/farm_avatar.png'
+        }
+        
+        # Default avatar if species not found
+        avatar_url = placeholder_avatars.get(species.lower(), '/static/img/avatars/default_avatar.png')
+        
+        # In a real implementation, this would use the OpenAI API to generate an image
+        # response = client.images.generate(
+        #     model="dall-e-3",
+        #     prompt=f"A cute cartoon avatar of a {breed} {species} named {pet_name}. Friendly, simple style.",
+        #     n=1,
+        #     size="512x512"
+        # )
+        # avatar_url = response.data[0].url
+        
+        return jsonify({
+            'success': True,
+            'avatar_url': avatar_url
+        })
+    except Exception as e:
+        logger.error(f"Avatar generation error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/update_profile', methods=['POST'])

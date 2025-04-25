@@ -619,4 +619,28 @@ function getCurrentLocation() {
 // Add this function
 function closeSuccessMessage() {
     document.getElementById('successMessage').classList.add('hidden');
-} 
+}
+
+// Function to handle pet selection
+function selectActivePet(petId) {
+    showLoading();
+    
+    fetch(`/set_active_pet/${petId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            throw new Error(data.error || 'Failed to select pet');
+        }
+    })
+    .catch(error => {
+        console.error('Error selecting pet:', error);
+        alert('Error selecting pet: ' + error.message);
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}

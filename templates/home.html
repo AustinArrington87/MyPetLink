@@ -81,6 +81,79 @@
         align-items: center;
         gap: 0.5rem;
     }
+    
+    /* Pet Selector Styles */
+    .pet-selector {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 1rem;
+        padding: 1rem 0;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .pet-selector::-webkit-scrollbar {
+        display: none;
+    }
+
+    .pet-option {
+        flex: 0 0 auto;
+        width: 80px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .pet-option.active {
+        transform: scale(1.1);
+    }
+
+    .pet-option-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        overflow: hidden;
+        margin: 0 auto 0.5rem auto;
+        border: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .pet-option.active .pet-option-avatar {
+        border-color: #4299e1;
+    }
+
+    .pet-option-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .add-pet-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .add-pet-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+        border: 2px dashed #d1d5db;
+        font-size: 1.5rem;
+        color: #6b7280;
+        transition: all 0.2s ease;
+    }
+
+    .add-pet-option:hover .add-pet-circle {
+        background-color: #e5e7eb;
+        border-color: #9ca3af;
+    }
 </style>
 
 <div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
@@ -119,6 +192,33 @@
         <p class="text-gray-600 relative z-10">
             Let's take care of your furry friend! Upload vet records, check their health, or get personalized tips.
         </p>
+        
+        {% if pets|length > 0 %}
+        <!-- Pet Selector -->
+        <div class="pet-selector mt-6">
+            {% for pet in pets %}
+            <div class="pet-option {% if pet.id == active_pet.id %}active{% endif %}" 
+                 onclick="selectActivePet('{{ pet.id }}')">
+                <div class="pet-option-avatar">
+                    <img src="{{ pet.avatar if pet.avatar else '/static/img/pet_logo.png' }}" 
+                         alt="{{ pet.name }}">
+                </div>
+                <div class="pet-option-name text-sm font-medium truncate">{{ pet.name }}</div>
+            </div>
+            {% endfor %}
+            <div class="pet-option add-pet-option" onclick="window.location.href='{{ url_for('profile') }}'">
+                <div class="add-pet-circle">+</div>
+                <div class="text-sm text-gray-500">Add Pet</div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center mt-6">
+            <a href="{{ url_for('profile') }}" 
+               class="inline-block bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition-all">
+                Add Your Pet
+            </a>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Vet Record Analysis -->
@@ -172,14 +272,17 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Species</label>
                     <select id="training-species" 
+                            onchange="loadTrainingBreeds()"
                             class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
                         <option value="">Select Species</option>
-                        <option value="dog">Dog</option>
-                        <option value="cat">Cat</option>
-                        <option value="bird">Bird</option>
-                        <option value="reptile">Reptile</option>
-                        <option value="rabbit">Rabbit</option>
-                        <option value="ferret">Ferret</option>
+                        <option value="dog" {% if active_pet.species == 'dog' %}selected{% endif %}>Dog</option>
+                        <option value="cat" {% if active_pet.species == 'cat' %}selected{% endif %}>Cat</option>
+                        <option value="bird" {% if active_pet.species == 'bird' %}selected{% endif %}>Bird</option>
+                        <option value="reptile" {% if active_pet.species == 'reptile' %}selected{% endif %}>Reptile</option>
+                        <option value="rabbit" {% if active_pet.species == 'rabbit' %}selected{% endif %}>Rabbit</option>
+                        <option value="ferret" {% if active_pet.species == 'ferret' %}selected{% endif %}>Ferret</option>
+                        <option value="fish" {% if active_pet.species == 'fish' %}selected{% endif %}>Fish</option>
+                        <option value="farm animal" {% if active_pet.species == 'farm animal' %}selected{% endif %}>Farm Animal</option>
                     </select>
                 </div>
                 <div>
@@ -466,4 +569,41 @@
 </div>
 
 <script src="/static/js/pet_app.js"></script>
+
+<script>
+// Pet Selection is handled by pet_app.js
+
+// Load breeds for training tips based on selected species
+function loadTrainingBreeds() {
+    const petType = document.getElementById('training-species').value;
+    if (!petType) return;
+    
+    // Remember current breed selection if it exists
+    const currentBreed = document.getElementById('training-breed').value;
+    
+    fetch(`/api/breeds/${petType}`)
+        .then(response => response.json())
+        .then(breeds => {
+            const breedSelect = document.getElementById('training-breed');
+            breedSelect.innerHTML = '<option value="">Select breed</option>' +
+                breeds.map(breed => {
+                    // Mark the option as selected if it matches the active pet's breed or the previously selected breed
+                    const selected = 
+                        (breed === "{{ active_pet.breed if active_pet else '' }}") || 
+                        (breed === currentBreed) ? 
+                        'selected' : '';
+                    return `<option value="${breed}" ${selected}>${breed}</option>`;
+                }).join('');
+        })
+        .catch(error => console.error('Error loading breeds:', error));
+}
+
+// Initialize breed selection if species is already selected
+document.addEventListener('DOMContentLoaded', function() {
+    const speciesSelect = document.getElementById('training-species');
+    if (speciesSelect && speciesSelect.value) {
+        loadTrainingBreeds();
+    }
+});
+</script>
 {% endblock %}
