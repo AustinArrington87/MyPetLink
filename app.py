@@ -23,11 +23,12 @@ import io
 import time
 import pyheif
 import asyncio
-from functools import partial
+from functools import partial, lru_cache
 import base64
 from email.mime.text import MIMEText
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+import re
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -58,8 +59,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+@lru_cache(maxsize=1)
 def get_gmail_service():
-    """Get Gmail service using credentials.json"""
+    """Get Gmail service using credentials.json with caching"""
     try:
         credentials = service_account.Credentials.from_service_account_file(
             'credentials.json',
@@ -69,7 +71,15 @@ def get_gmail_service():
         # Add user impersonation
         delegated_credentials = credentials.with_subject('austin@plantgroup.co')
         
-        return build('gmail', 'v1', credentials=delegated_credentials)
+        return build(
+            'gmail', 
+            'v1', 
+            credentials=delegated_credentials, 
+            cache_discovery=False,
+            # Add these parameters for better timeout handling
+            static_discovery=False,
+            num_retries=3
+        )
     except Exception as e:
         logger.error(f"Error creating Gmail service: {str(e)}")
         raise
@@ -675,57 +685,84 @@ def get_training_tips():
             'error': str(e)
         }), 500
 
+# Add this helper function to extract zipcode
+def extract_zipcode(address):
+    """Extract zipcode from address string. Returns None if no zipcode found."""
+    # Look for 5-digit number at the end of the address
+    zipcode_match = re.search(r'\b\d{5}\b(?![\d-])', address)
+    if zipcode_match:
+        return zipcode_match.group(0)
+    return None
+
 @app.route('/report-rescue', methods=['POST'])
 def report_rescue():
     logger.info("Received rescue report request")
     
     try:
         data = request.json
+        logger.info(f"Received data: {data}")
         
-        body = f"""
-        🆘 Rescue Animal Report
-
-        📱 Contact Information
-        Name: {data['name']}
-        Phone: {data['phone']}
-        Email: {data['email'] or 'Not provided'}
-
-        📍 Location Information
-        Address: {data['location']}
+        # Generate UUID for ticket
+        ticket_id = str(uuid.uuid4())
         
-        🐾 Animal Details
-        Species: {data['species']}
-        Breed: {data['breed'] or 'Not specified'}
+        # Get current date
+        current_date = datetime.now().date()
+        logger.info(f"Creating ticket for date: {current_date}")
         
-        ⚕️ Health Issues/Situation:
-        {data['description']}
+        # Extract zipcode from location
+        zipcode = extract_zipcode(data['location'])
+        logger.info(f"Extracted zipcode: {zipcode}")
         
-        ⏰ Reported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-        """
-        
+        # Store in database
         try:
-            message = MIMEText(body)
-            message['to'] = 'austin@plantgroup.co'
-            message['from'] = 'austin@plantgroup.co'
-            message['subject'] = f"🆘 New Rescue Animal Report - {data['species'].title()}"
-            
-            raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-            
-            service = get_gmail_service()
-            service.users().messages().send(userId='me', body={'raw': raw}).execute()
-            
-            logger.info("Rescue report email sent successfully")
-            
-            return jsonify({
-                'success': True,
-                'message': 'Your rescue report has been submitted successfully. Thank you for helping!'
-            })
-            
-        except Exception as email_error:
-            logger.error(f"Email error: {str(email_error)}")
+            conn = get_db_connection()
+            if conn:
+                cur = conn.cursor()
+                
+                # Get species and breed directly from form data
+                species = data.get('species', '')  # Remove 'Unknown' fallback
+                breed = data.get('breed', '')      # Remove 'Unknown Breed' fallback
+                ticket_name = f"{species} - {breed}" if species and breed else "Unspecified Animal"
+                
+                logger.info(f"Creating ticket with species: {species}, breed: {breed}")
+                
+                cur.execute("""
+                    INSERT INTO rescue_tickets 
+                    (id, zipcode, description, ticket_name, contact_email, contact_name, 
+                     contact_phone, contact_address, date, species, breed)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    ticket_id,
+                    zipcode,
+                    data.get('description', ''),
+                    ticket_name,
+                    data.get('email', ''),
+                    data.get('name', ''),
+                    data.get('phone', ''),
+                    data.get('location', ''),
+                    current_date,
+                    species,    # Add species to database
+                    breed      # Add breed to database
+                ))
+                
+                conn.commit()
+                cur.close()
+                conn.close()
+                
+                logger.info(f"Rescue ticket {ticket_id} stored in database with species: {species}, breed: {breed}")
+                
+                # Return success immediately after database write
+                return jsonify({
+                    'success': True,
+                    'message': 'Your rescue report has been submitted successfully. Thank you for helping!',
+                    'ticket_id': ticket_id
+                })
+                
+        except Exception as db_error:
+            logger.error(f"Database error: {str(db_error)}")
             return jsonify({
                 'success': False,
-                'error': 'Failed to submit report. Please try again or contact support.'
+                'error': 'Failed to store report. Please try again.'
             }), 500
             
     except Exception as e:
@@ -734,6 +771,9 @@ def report_rescue():
             'success': False,
             'error': 'Failed to submit report. Please try again or contact support.'
         }), 500
+
+# Note: Gmail code has been removed. If you want to re-enable it later, 
+# it can be added back after the database operation succeeds.
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001, use_reloader=True)
