@@ -632,4 +632,137 @@ function getCurrentLocation() {
 // Add this function
 function closeSuccessMessage() {
     document.getElementById('successMessage').classList.add('hidden');
-} 
+}
+
+function searchRescues() {
+    const zipcode = document.getElementById('searchZipcode').value.trim();
+    const resultsContainer = document.getElementById('rescueResults');
+    
+    if (!zipcode || !/^\d{5}$/.test(zipcode)) {
+        alert('Please enter a valid 5-digit zipcode');
+        return;
+    }
+    
+    // Show loading state
+    resultsContainer.innerHTML = '<div class="text-center py-4"><img src="/static/img/GIFs/cleo.gif" alt="Loading..." class="mx-auto h-12 w-12"></div>';
+    
+    fetch(`/search-rescues?zipcode=${zipcode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.rescues.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="text-center py-4 text-gray-600">
+                            No rescue tickets found in zipcode ${zipcode}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                resultsContainer.innerHTML = data.rescues.map(rescue => `
+                    <div class="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="font-semibold text-lg text-purple-800">${rescue.ticket_name}</h3>
+                            <span class="text-sm text-gray-500">${new Date(rescue.date).toLocaleDateString()}</span>
+                        </div>
+                        <p class="text-gray-600 mb-3">${rescue.description}</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="inline-block bg-purple-100 text-purple-800 text-sm px-2 py-1 rounded">
+                                ${rescue.species}
+                            </span>
+                            ${rescue.breed ? `
+                                <span class="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
+                                    ${rescue.breed}
+                                </span>
+                            ` : ''}
+                            <span class="inline-block bg-gray-100 text-gray-800 text-sm px-2 py-1 rounded">
+                                📍 ${rescue.zipcode}
+                            </span>
+                        </div>
+                        
+                        <!-- Contact Information Section -->
+                        <div class="border-t pt-3">
+                            <button onclick="toggleContactInfo('contact-${rescue.id}')"
+                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors w-full flex items-center justify-center gap-2">
+                                <span class="text-lg">📞</span> Contact
+                            </button>
+                            
+                            <div id="contact-${rescue.id}" class="hidden mt-3 bg-gray-50 p-3 rounded-lg">
+                                <div class="space-y-2">
+                                    ${rescue.contact_name ? `
+                                        <p class="flex items-center gap-2">
+                                            <span class="font-medium">👤 Contact:</span> 
+                                            ${rescue.contact_name}
+                                        </p>
+                                    ` : ''}
+                                    
+                                    ${rescue.contact_phone ? `
+                                        <p class="flex items-center gap-2">
+                                            <span class="font-medium">📱 Phone:</span>
+                                            <a href="tel:${rescue.contact_phone}" class="text-blue-600 hover:underline">
+                                                ${rescue.contact_phone}
+                                            </a>
+                                        </p>
+                                    ` : ''}
+                                    
+                                    ${rescue.contact_email ? `
+                                        <p class="flex items-center gap-2">
+                                            <span class="font-medium">📧 Email:</span>
+                                            <a href="mailto:${rescue.contact_email}" class="text-blue-600 hover:underline">
+                                                ${rescue.contact_email}
+                                            </a>
+                                        </p>
+                                    ` : ''}
+                                    
+                                    ${rescue.contact_address ? `
+                                        <p class="flex items-center gap-2">
+                                            <span class="font-medium">📍 Location:</span>
+                                            ${rescue.contact_address}
+                                        </p>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                resultsContainer.innerHTML = `
+                    <div class="text-center py-4 text-red-600">
+                        ${data.error || 'Failed to search rescues. Please try again.'}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            resultsContainer.innerHTML = `
+                <div class="text-center py-4 text-red-600">
+                    Failed to search rescues. Please try again.
+                </div>
+            `;
+        });
+}
+
+// Add this function to toggle contact information visibility
+function toggleContactInfo(contactId) {
+    const contactDiv = document.getElementById(contactId);
+    if (contactDiv.classList.contains('hidden')) {
+        // Hide any other open contact info first
+        document.querySelectorAll('[id^="contact-"]').forEach(div => {
+            if (div.id !== contactId) {
+                div.classList.add('hidden');
+            }
+        });
+        // Show this contact info
+        contactDiv.classList.remove('hidden');
+    } else {
+        contactDiv.classList.add('hidden');
+    }
+}
+
+// Add event listener for Enter key on zipcode input
+document.getElementById('searchZipcode')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchRescues();
+    }
+}); 
