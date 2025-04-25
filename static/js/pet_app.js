@@ -351,6 +351,15 @@ document.addEventListener('DOMContentLoaded', function() {
         rescueForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <img src="/static/img/GIFs/spot.gif" alt="Loading..." class="h-6 w-6 inline mr-2">
+                Submitting Report...
+            `;
+            
             const formData = {
                 name: document.getElementById('rescueName').value,
                 phone: document.getElementById('rescuePhone').value,
@@ -362,8 +371,6 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             try {
-                showLoading('rescue');
-                
                 const response = await fetch('/report-rescue', {
                     method: 'POST',
                     headers: {
@@ -373,7 +380,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 const data = await response.json();
-                hideLoading();
+                
+                // Reset button state
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
                 
                 if (data.success) {
                     closeRescueForm();
@@ -383,7 +393,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(data.error || 'Failed to submit report');
                 }
             } catch (error) {
-                hideLoading();
+                // Reset button state
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+                
                 console.error('Submission error:', error);
                 alert('Error submitting report: ' + error.message);
             }
