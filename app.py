@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, jsonify, session, url_for, send_file
+from flask import Flask, render_template, request, jsonify, session, url_for, send_file, redirect
 from werkzeug.utils import secure_filename
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from gpt_agent import analyze_health_records, analyze_poop_image
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -28,6 +28,9 @@ import base64
 from email.mime.text import MIMEText
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from authlib.integrations.flask_client import OAuth
+from werkzeug.security import generate_password_hash, check_password_hash
+from jose import jwt
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -47,7 +50,23 @@ logging.basicConfig(
 logger = logging.getLogger('HealthAnalysisApp')
 
 app = Flask(__name__)
-app.secret_key = 'dev-secret-key-123'  # Required for session management
+app.secret_key = os.environ.get("APP_SECRET_KEY", 'dev-secret-key-123')  # Required for session management
+
+# Auth0 configuration
+oauth = OAuth(app)
+auth0 = oauth.register(
+    'auth0',
+    client_id=os.environ.get("AUTH0_CLIENT_ID"),
+    client_secret=os.environ.get("AUTH0_CLIENT_SECRET"),
+    api_base_url=f'https://{os.environ.get("AUTH0_DOMAIN")}',
+    access_token_url=f'https://{os.environ.get("AUTH0_DOMAIN")}/oauth/token',
+    authorize_url=f'https://{os.environ.get("AUTH0_DOMAIN")}/authorize',
+    jwks_uri=f'https://{os.environ.get("AUTH0_DOMAIN")}/.well-known/jwks.json',
+    server_metadata_url=f'https://{os.environ.get("AUTH0_DOMAIN")}/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid profile email',
+    },
+)
 
 # Configure upload folder
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -108,11 +127,56 @@ def get_current_user():
 
     return User(user_name, vitals_data, user_type)
 
+# Auth0 routes
+@app.route('/login')
+def login():
+    return auth0.authorize_redirect(redirect_uri=os.environ.get("AUTH0_CALLBACK_URL"))
+
+@app.route('/callback')
+def callback_handling():
+    token = auth0.authorize_access_token()
+    resp = auth0.get('userinfo')
+    userinfo = resp.json()
+    
+    # Store user info in session
+    session['jwt_payload'] = userinfo
+    session['profile'] = {
+        'user_id': userinfo['sub'],
+        'name': userinfo.get('name', ''),
+        'picture': userinfo.get('picture', ''),
+        'email': userinfo.get('email', '')
+    }
+    
+    # Extract first and last name for compatibility with existing code
+    full_name = userinfo.get('name', 'Guest')
+    session['user_name'] = full_name
+    
+    return redirect('/')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    params = {
+        'returnTo': url_for('home', _external=True),
+        'client_id': os.environ.get("AUTH0_CLIENT_ID")
+    }
+    return redirect(auth0.api_base_url + '/v2/logout?' + '&'.join([f'{key}={value}' for key, value in params.items()]))
+
+def requires_auth(f):
+    """Decorator to check if user is authenticated"""
+    def decorated(*args, **kwargs):
+        if 'profile' not in session:
+            return redirect('/login')
+        return f(*args, **kwargs)
+    decorated.__name__ = f.__name__
+    return decorated
+
 @app.route('/')
 def home():
     # Get user name from session, default to "Guest" if not found
     user_name = session.get('user_name', 'Guest')
-    return render_template('home.html', user_name=user_name)
+    is_authenticated = 'profile' in session
+    return render_template('home.html', user_name=user_name, is_authenticated=is_authenticated)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -163,10 +227,12 @@ def upload_file():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/profile')
+@requires_auth
 def profile():
     # Get pet profile from session or use empty dict
     pet_data = session.get('pet_profile', {})
-    return render_template('profile.html', pet=pet_data)
+    user_profile = session.get('profile', {})
+    return render_template('profile.html', pet=pet_data, user_profile=user_profile)
 
 @app.route('/update_pet_profile', methods=['POST'])
 def update_pet_profile():

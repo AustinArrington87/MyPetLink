@@ -3,6 +3,11 @@ flask[async]
 openai
 python-dotenv
 
+#Auth0
+authlib>=1.0
+python-jose>=3.3.0
+
+
 # Image processing
 pytesseract
 pdf2image
@@ -26,3 +31,7 @@ google-auth-httplib2  # Add this for HTTP client support
 
 # Async support
 asyncio  # Add this for async operations 
+
+# AWS integration
+boto3>=1.28.0
+botocore>=1.31.0

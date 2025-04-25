@@ -90,15 +90,29 @@
                  alt="MyPetLink Logo" 
                  class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300">
         </a>
-        <a href="{{ url_for('profile') }}" 
-           class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center">
-            <span class="mr-1">🐾</span> Pet Profile
-        </a>
+        <div class="flex items-center space-x-4">
+            {% if is_authenticated %}
+                <a href="{{ url_for('profile') }}" 
+                   class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center">
+                    <span class="mr-1">🐾</span> Pet Profile
+                </a>
+                <a href="{{ url_for('logout') }}" 
+                   class="text-red-500 hover:text-red-700 transition-colors duration-200">
+                    Logout
+                </a>
+            {% else %}
+                <a href="{{ url_for('login') }}" 
+                   class="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors duration-200">
+                    Login / Sign Up
+                </a>
+            {% endif %}
+        </div>
     </div>
 </div>
 
 <div class="max-w-4xl mx-auto mt-20 px-4">
-    <!-- Welcome Message -->
+    {% if is_authenticated %}
+    <!-- Welcome Message for authenticated users -->
     <div class="welcome-card rounded-2xl p-6 shadow-lg mb-8 relative overflow-hidden">
         <div class="paw-print text-8xl absolute -top-4 -right-4">🐾</div>
         <h1 class="text-2xl font-bold mb-4 text-orange-800">Welcome, {{ user_name }}! 🐾</h1>
@@ -274,6 +288,80 @@
             </div>
         </div>
     </div>
+{% else %}
+    <!-- Welcome Message for non-authenticated users -->
+    <div class="welcome-card rounded-2xl p-8 shadow-lg mb-8 relative overflow-hidden">
+        <div class="paw-print text-8xl absolute -top-4 -right-4">🐾</div>
+        <div class="paw-print text-8xl absolute -bottom-4 -left-4 transform rotate-180">🐾</div>
+        <h1 class="text-3xl font-bold mb-4 text-orange-800 text-center">Welcome to MyPetLink! 🐾</h1>
+        <div class="max-w-3xl mx-auto">
+            <p class="text-gray-600 text-lg mb-4 relative z-10">
+                Your comprehensive pet health companion that helps you understand, monitor, and improve your pet's well-being.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 mb-6">
+                <div class="bg-blue-50 p-4 rounded-xl text-center">
+                    <div class="text-3xl mb-2">📋</div>
+                    <h3 class="text-lg font-semibold text-blue-800">Vet Record Analysis</h3>
+                    <p class="text-gray-600 mt-2">Upload medical records and get instant insights in plain language</p>
+                </div>
+                
+                <div class="bg-green-50 p-4 rounded-xl text-center">
+                    <div class="text-3xl mb-2">💩</div>
+                    <h3 class="text-lg font-semibold text-green-800">Health Monitoring</h3>
+                    <p class="text-gray-600 mt-2">Track symptoms with our AI-powered tools, including poop analysis</p>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🎾</div>
+                    <h3 class="text-lg font-semibold text-purple-800">Training & Care Tips</h3>
+                    <p class="text-gray-600 mt-2">Get breed-specific advice tailored to your furry friend</p>
+                </div>
+            </div>
+            
+            <div class="text-center mt-8">
+                <a href="{{ url_for('login') }}" 
+                   class="bg-blue-500 text-white px-10 py-4 rounded-full text-lg font-semibold hover:bg-blue-600 transform transition-all hover:scale-105 shadow-lg inline-block">
+                    Get Started Now
+                </a>
+                <p class="text-gray-500 mt-4">Join thousands of pet parents providing better care with MyPetLink</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Testimonials Section -->
+    <div class="bg-white rounded-2xl p-8 shadow-lg mb-8">
+        <h2 class="text-2xl font-semibold mb-6 text-center text-gray-800">What Pet Parents Are Saying</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-blue-50 p-6 rounded-xl">
+                <div class="flex items-center mb-4">
+                    <span class="text-yellow-400 text-lg">★★★★★</span>
+                    <span class="ml-2 font-medium">Sarah & Max</span>
+                </div>
+                <p class="text-gray-600 italic">"MyPetLink helped me understand Max's lab results when I was worried about his kidney values. The AI explained everything in simple terms and suggested questions for our next vet visit."</p>
+            </div>
+            
+            <div class="bg-purple-50 p-6 rounded-xl">
+                <div class="flex items-center mb-4">
+                    <span class="text-yellow-400 text-lg">★★★★★</span>
+                    <span class="ml-2 font-medium">James & Luna</span>
+                </div>
+                <p class="text-gray-600 italic">"The breed-specific training tips were game-changers for my energetic Border Collie. Luna is much calmer now that we've implemented the enrichment activities suggested by MyPetLink."</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Final CTA -->
+    <div class="chat-card rounded-2xl p-8 shadow-lg mt-8 text-center">
+        <h2 class="text-2xl font-semibold mb-4 text-green-800">Ready to provide better care for your pet?</h2>
+        <p class="text-gray-600 mb-6">Create your free account today and join our community of loving pet parents</p>
+        <a href="{{ url_for('login') }}" 
+           class="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold hover:bg-green-600 transform transition-all hover:scale-105 shadow-lg inline-block">
+            Sign Up Now
+        </a>
+    </div>
+{% endif %}
 </div>
 
 <!-- Loading State -->
