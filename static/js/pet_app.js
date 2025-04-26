@@ -644,3 +644,287 @@ function selectActivePet(petId) {
         hideLoading();
     });
 }
+
+// Function to fetch pet files and display in UI
+function loadPetFiles(petId, fileType = null) {
+    if (!petId) return;
+    
+    let url = `/get_pet_files/${petId}`;
+    if (fileType) {
+        url += `?type=${fileType}`;
+    }
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayPetFiles(data.files, fileType);
+            } else {
+                throw new Error(data.error || 'Failed to fetch pet files');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching pet files:', error);
+            const fileContainer = document.getElementById('pet-files-container');
+            if (fileContainer) {
+                fileContainer.innerHTML = `<p class="text-red-500">Error loading files: ${error.message}</p>`;
+            }
+        });
+}
+
+// Function to display pet files in the UI
+function displayPetFiles(files, fileType) {
+    const fileContainer = document.getElementById('pet-files-container');
+    if (!fileContainer) return;
+    
+    if (!files || files.length === 0) {
+        fileContainer.innerHTML = '<p class="text-gray-500 text-center py-4">No files found</p>';
+        return;
+    }
+    
+    // Group files by file type if no specific type is requested
+    if (!fileType) {
+        const groupedFiles = {};
+        
+        // Group files by type
+        files.forEach(file => {
+            if (!groupedFiles[file.file_type]) {
+                groupedFiles[file.file_type] = [];
+            }
+            groupedFiles[file.file_type].push(file);
+        });
+        
+        // Generate HTML for each group
+        let html = '';
+        
+        // Define the display order and friendly names
+        const fileTypeOrder = ['avatar', 'health_record', 'poop'];
+        const fileTypeTitles = {
+            'avatar': 'Avatars',
+            'health_record': 'Health Records',
+            'poop': 'Health Monitoring Images'
+        };
+        
+        fileTypeOrder.forEach(type => {
+            if (groupedFiles[type] && groupedFiles[type].length > 0) {
+                html += `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-medium text-gray-800 mb-2">${fileTypeTitles[type] || type}</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${getFilesHTML(groupedFiles[type])}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        fileContainer.innerHTML = html;
+    } else {
+        // Display specific file type
+        fileContainer.innerHTML = `
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${getFilesHTML(files)}
+            </div>
+        `;
+    }
+    
+    // Add click handlers for file previews
+    document.querySelectorAll('.pet-file-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const fileId = this.dataset.fileId;
+            const filePath = this.dataset.filePath;
+            const fileType = this.dataset.fileType;
+            const fileName = this.dataset.fileName;
+            
+            // Handle different file types
+            if (fileType === 'avatar') {
+                previewImage(filePath, fileName);
+            } else if (fileType === 'health_record') {
+                if (fileName.toLowerCase().endsWith('.pdf')) {
+                    previewPdf(filePath, fileName);
+                } else {
+                    previewImage(filePath, fileName);
+                }
+            } else if (fileType === 'poop') {
+                previewImage(filePath, fileName, true); // true indicates analysis is available
+            }
+        });
+    });
+}
+
+// Generate HTML for file cards
+function getFilesHTML(files) {
+    return files.map(file => {
+        const fileExtension = file.original_filename.split('.').pop().toLowerCase();
+        let thumbnailHTML = '';
+        
+        // Determine appropriate thumbnail based on file type and extension
+        if (file.file_type === 'avatar' || 
+            ['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+            thumbnailHTML = `<img src="${file.s3_path}" alt="${file.original_filename}" class="w-full h-32 object-cover rounded-t-lg" onerror="this.src='/static/img/pet_logo.png'">`;
+        } else if (fileExtension === 'pdf') {
+            thumbnailHTML = `<div class="w-full h-32 bg-red-50 flex items-center justify-center rounded-t-lg">
+                              <svg class="w-16 h-16 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.414 5L14 2.586A2 2 0 0012.586 2H9z"></path>
+                                <path d="M3 8a2 2 0 012-2h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"></path>
+                              </svg>
+                            </div>`;
+        } else {
+            thumbnailHTML = `<div class="w-full h-32 bg-gray-100 flex items-center justify-center rounded-t-lg">
+                              <svg class="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                              </svg>
+                            </div>`;
+        }
+        
+        // Format date
+        const fileDate = new Date(file.created_at);
+        const formattedDate = fileDate.toLocaleDateString();
+        
+        // Create card HTML
+        return `
+            <div class="pet-file-card bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                 data-file-id="${file.id}"
+                 data-file-path="${file.s3_path}"
+                 data-file-type="${file.file_type}"
+                 data-file-name="${file.original_filename}">
+                ${thumbnailHTML}
+                <div class="p-3">
+                    <p class="text-sm font-medium text-gray-700 truncate">${file.original_filename}</p>
+                    <p class="text-xs text-gray-500">${formattedDate}</p>
+                    ${file.has_analysis ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Analysis Available</span>' : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Function to preview an image
+function previewImage(imagePath, fileName, hasAnalysis = false) {
+    // Create modal for image preview
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+    
+    // Create modal content
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">${fileName}</h3>
+                <button class="text-gray-400 hover:text-gray-500" id="close-preview">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto p-4 flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <img src="${imagePath}" alt="${fileName}" class="max-w-full h-auto mx-auto" onerror="this.src='/static/img/pet_logo.png'">
+                </div>
+                ${hasAnalysis ? `
+                <div class="md:w-1/3 bg-gray-50 p-4 rounded-lg">
+                    <h4 class="font-medium text-gray-900 mb-2">Analysis</h4>
+                    <div id="analysis-content" class="text-sm text-gray-700">
+                        <p class="text-gray-500 italic">Loading analysis...</p>
+                    </div>
+                </div>` : ''}
+            </div>
+            <div class="p-4 border-t border-gray-200 flex justify-end">
+                <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" id="close-button">Close</button>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to body
+    document.body.appendChild(modal);
+    
+    // Add event listeners to close the modal
+    document.getElementById('close-preview').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    document.getElementById('close-button').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+    
+    // If there's analysis, fetch it
+    if (hasAnalysis) {
+        // This would be a call to get the analysis from the backend
+        // For now, we'll just simulate with a placeholder
+        
+        setTimeout(() => {
+            const analysisContent = document.getElementById('analysis-content');
+            if (analysisContent) {
+                analysisContent.innerHTML = `
+                    <div class="space-y-3">
+                        <div>
+                            <h5 class="font-medium">Summary</h5>
+                            <p>Normal healthy stool sample with good consistency.</p>
+                        </div>
+                        <div>
+                            <h5 class="font-medium">Concerns</h5>
+                            <p>No concerns detected in this sample.</p>
+                        </div>
+                        <div>
+                            <h5 class="font-medium">Recommendations</h5>
+                            <p>Continue with current diet and monitoring routine.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }, 1000);
+    }
+}
+
+// Function to preview a PDF
+function previewPdf(pdfPath, fileName) {
+    // Create modal for PDF preview
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+    
+    // Create modal content with embedded PDF viewer
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">${fileName}</h3>
+                <button class="text-gray-400 hover:text-gray-500" id="close-preview">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-hidden">
+                <iframe src="${pdfPath}" class="w-full h-full border-0"></iframe>
+            </div>
+            <div class="p-4 border-t border-gray-200 flex justify-between">
+                <a href="${pdfPath}" target="_blank" class="px-4 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">Open in New Tab</a>
+                <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" id="close-button">Close</button>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to body
+    document.body.appendChild(modal);
+    
+    // Add event listeners to close the modal
+    document.getElementById('close-preview').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    document.getElementById('close-button').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+}

@@ -284,8 +284,8 @@
         <div class="pet-option {% if pet.id == active_pet.id %}active{% endif %}" 
              onclick="selectPet('{{ pet.id }}')">
             <div class="pet-option-avatar">
-                <img src="{{ pet.avatar if pet.avatar else '/static/img/pet_logo.png' }}" 
-                     alt="{{ pet.name }}">
+                <img src="{{ pet.avatar if pet.avatar and pet.avatar.startswith('/') else pet.avatar if pet.avatar else '/static/img/pet_logo.png' }}" 
+                     alt="{{ pet.name }}" onerror="this.src='/static/img/pet_logo.png'">
             </div>
             <div class="pet-option-name text-sm font-medium truncate">{{ pet.name }}</div>
         </div>
@@ -330,8 +330,8 @@
                 <!-- Avatar Section -->
                 <div class="text-center mb-6">
                     <div class="avatar-container" id="avatarContainer">
-                        <img id="petAvatar" src="{{ active_pet.avatar if active_pet.avatar else '/static/img/pet_logo.png' }}" 
-                             alt="Pet Avatar">
+                        <img id="petAvatar" src="{{ active_pet.avatar if active_pet.avatar and active_pet.avatar.startswith('/') else active_pet.avatar if active_pet.avatar else '/static/img/pet_logo.png' }}" 
+                             alt="Pet Avatar" onerror="this.src='/static/img/pet_logo.png'">
                         <div class="avatar-overlay" onclick="openAvatarOptions()">
                             <button class="bg-white text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
                                 Change
@@ -413,8 +413,8 @@
                 
                 <div class="text-center mb-6">
                     <div class="avatar-container mx-auto mb-6" style="width: 200px; height: 200px;">
-                        <img id="avatarPreview" src="{{ active_pet.avatar if active_pet.avatar else '/static/img/pet_logo.png' }}" 
-                             alt="Pet Avatar">
+                        <img id="avatarPreview" src="{{ active_pet.avatar if active_pet.avatar and active_pet.avatar.startswith('/') else active_pet.avatar if active_pet.avatar else '/static/img/pet_logo.png' }}" 
+                             alt="Pet Avatar" onerror="this.src='/static/img/pet_logo.png'">
                     </div>
                     
                     <div class="space-y-4">

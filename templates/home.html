@@ -200,8 +200,8 @@
             <div class="pet-option {% if pet.id == active_pet.id %}active{% endif %}" 
                  onclick="selectActivePet('{{ pet.id }}')">
                 <div class="pet-option-avatar">
-                    <img src="{{ pet.avatar if pet.avatar else '/static/img/pet_logo.png' }}" 
-                         alt="{{ pet.name }}">
+                    <img src="{{ pet.avatar if pet.avatar and pet.avatar.startswith('/') else pet.avatar if pet.avatar else '/static/img/pet_logo.png' }}" 
+                         alt="{{ pet.name }}" onerror="this.src='/static/img/pet_logo.png'">
                 </div>
                 <div class="pet-option-name text-sm font-medium truncate">{{ pet.name }}</div>
             </div>
@@ -351,7 +351,26 @@
         </div>
     </div>
 
-    <!-- Add this after the training tips section -->
+    <!-- Pet Files Section -->
+    {% if active_pet %}
+    <div class="analysis-card rounded-2xl p-6 shadow-lg mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-indigo-800 flex items-center justify-between">
+            <div>
+                <span class="text-2xl mr-2">📁</span> {{ active_pet.name }}'s Files
+            </div>
+            <div class="text-sm text-indigo-500">
+                <a href="{{ url_for('profile') }}" class="hover:underline">
+                    Manage Files
+                </a>
+            </div>
+        </h2>
+        <div id="pet-files-container" class="min-h-[100px]">
+            <p class="text-gray-500 text-center py-4">Loading files...</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Add this after the pet files section -->
     <div class="analysis-card rounded-2xl p-6 shadow-lg mb-6">
         <h2 class="text-xl font-semibold mb-4 text-red-800 flex items-center">
             <span class="text-2xl mr-2">🆘</span> Report Rescue Animal
@@ -604,6 +623,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (speciesSelect && speciesSelect.value) {
         loadTrainingBreeds();
     }
+    
+    // Load pet files if on a pet's page
+    {% if active_pet %}
+    loadPetFiles('{{ active_pet.id }}');
+    {% endif %}
 });
 </script>
 {% endblock %}
