@@ -91,7 +91,7 @@ jobs:
           
           # Verify app is initialized
           echo "Verifying Copilot app exists..."
-          if ! copilot app show --name ${{ env.COPILOT_APPLICATION }} 2>/dev/null; then
+          if ! copilot app ls | grep -q "${{ env.COPILOT_APPLICATION }}"; then
             echo "Error: Application ${{ env.COPILOT_APPLICATION }} not found"
             echo "::set-output name=status::failure"
             exit 1
@@ -99,7 +99,7 @@ jobs:
           
           # Verify environment exists
           echo "Verifying environment exists..."
-          if ! copilot env show --name ${{ env.ENVIRONMENT }} --app ${{ env.COPILOT_APPLICATION }} 2>/dev/null; then
+          if ! copilot env ls --app ${{ env.COPILOT_APPLICATION }} | grep -q "${{ env.ENVIRONMENT }}"; then
             echo "Error: Environment ${{ env.ENVIRONMENT }} not found"
             echo "::set-output name=status::failure"
             exit 1
@@ -118,7 +118,7 @@ jobs:
               --env ${{ env.ENVIRONMENT }}; then
               
               echo "Deployment successful!"
-              echo "::set-output name=status::success"
+              echo "status=success" >> $GITHUB_OUTPUT
               break
             else
               DEPLOY_EXIT_CODE=$?
@@ -126,7 +126,7 @@ jobs:
               
               if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
                 echo "All deployment attempts failed"
-                echo "::set-output name=status::failure"
+                echo "status=failure" >> $GITHUB_OUTPUT
                 exit $DEPLOY_EXIT_CODE
               else
                 echo "Retrying deployment in 30 seconds..."
