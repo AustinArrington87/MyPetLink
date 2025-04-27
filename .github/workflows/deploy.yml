@@ -67,9 +67,10 @@ jobs:
       
       - name: Install AWS Copilot CLI
         run: |
-          curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
-          chmod +x copilot
-          sudo mv copilot /usr/local/bin/copilot
+          mkdir -p /tmp/copilot-download
+          curl -Lo /tmp/copilot-download/copilot-cli https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+          chmod +x /tmp/copilot-download/copilot-cli
+          sudo mv /tmp/copilot-download/copilot-cli /usr/local/bin/copilot
           copilot --version
       
       - name: Deploy with AWS Copilot
@@ -87,6 +88,22 @@ jobs:
           echo "Version: ${BUILD_TAG}"
           echo "Commit: ${GITHUB_SHA}"
           echo "Branch: ${GITHUB_REF_NAME}"
+          
+          # Verify app is initialized
+          echo "Verifying Copilot app exists..."
+          if ! copilot app show --name ${{ env.COPILOT_APPLICATION }} 2>/dev/null; then
+            echo "Error: Application ${{ env.COPILOT_APPLICATION }} not found"
+            echo "::set-output name=status::failure"
+            exit 1
+          fi
+          
+          # Verify environment exists
+          echo "Verifying environment exists..."
+          if ! copilot env show --name ${{ env.ENVIRONMENT }} --app ${{ env.COPILOT_APPLICATION }} 2>/dev/null; then
+            echo "Error: Environment ${{ env.ENVIRONMENT }} not found"
+            echo "::set-output name=status::failure"
+            exit 1
+          fi
           
           # Deploy the service to the environment with timeout and retry logic
           MAX_ATTEMPTS=2
