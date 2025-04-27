@@ -2,6 +2,7 @@
 flask[async]
 openai
 python-dotenv
+spacy>=3.0.0
 
 #Auth0
 authlib>=1.0
