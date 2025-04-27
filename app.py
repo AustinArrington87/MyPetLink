@@ -15,6 +15,7 @@ from dotenv import load_dotenv, find_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
+import urllib.parse
 import uuid
 import json
 from PIL import Image
@@ -197,11 +198,26 @@ def callback_handling():
 @app.route('/logout')
 def logout():
     session.clear()
+    
+    # Check environment to determine if we should force HTTPS
+    env = os.environ.get("ENVIRONMENT", "development")
+    
+    # Get base URL - either from request or with url_for
+    if env != "development" and request.host and not request.host.startswith('localhost'):
+        # In production: Force HTTPS in the returnTo URL
+        base_url = f"https://{request.host}"
+        return_to = f"{base_url}/"
+    else:
+        # In development: Use whatever protocol was in the request
+        return_to = url_for('home', _external=True)
+    
     params = {
-        'returnTo': url_for('home', _external=True),
+        'returnTo': return_to,
         'client_id': os.environ.get("AUTH0_CLIENT_ID")
     }
-    return redirect(auth0.api_base_url + '/v2/logout?' + '&'.join([f'{key}={value}' for key, value in params.items()]))
+    
+    logout_url = auth0.api_base_url + '/v2/logout?' + '&'.join([f'{key}={urllib.parse.quote(value)}' for key, value in params.items()])
+    return redirect(logout_url)
 
 def requires_auth(f):
     """Decorator to check if user is authenticated"""
