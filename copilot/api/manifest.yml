@@ -64,7 +64,12 @@ environments:
   staging:
     variables:
       ENVIRONMENT: staging
+      AWS_REGION: us-east-1
   
   production:
     variables:
       ENVIRONMENT: production
+      AWS_REGION: us-east-1  # Using N. Virginia region for all environments
+
+# The instance role is now defined in the addons/instance-role.yaml file
+# Custom instance role template approach

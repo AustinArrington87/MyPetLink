@@ -20,9 +20,9 @@ on:
           - production
 
 env:
-  AWS_REGION: us-east-1
   COPILOT_APPLICATION: mypetlink
   COPILOT_SERVICE: api
+  AWS_REGION: us-east-1  # Using us-east-1 for all environments
 
 jobs:
   deploy:
@@ -93,7 +93,7 @@ jobs:
           echo "Verifying Copilot app exists..."
           if ! copilot app ls | grep -q "${{ env.COPILOT_APPLICATION }}"; then
             echo "Error: Application ${{ env.COPILOT_APPLICATION }} not found"
-            echo "::set-output name=status::failure"
+            echo "status=failure" >> $GITHUB_OUTPUT
             exit 1
           fi
           
@@ -101,7 +101,7 @@ jobs:
           echo "Verifying environment exists..."
           if ! copilot env ls --app ${{ env.COPILOT_APPLICATION }} | grep -q "${{ env.ENVIRONMENT }}"; then
             echo "Error: Environment ${{ env.ENVIRONMENT }} not found"
-            echo "::set-output name=status::failure"
+            echo "status=failure" >> $GITHUB_OUTPUT
             exit 1
           fi
           

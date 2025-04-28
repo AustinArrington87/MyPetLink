@@ -19,3 +19,14 @@ type: Environment
 # Configure observability for your environment resources.
 observability:
   container_insights: false
+
+permissions:
+  ssm:
+    - effect: Allow
+      actions:
+        - ssm:PutParameter
+        - ssm:DeleteParameter
+        - ssm:GetParameters
+        - ssm:GetParameter
+      resources:
+        - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/copilot/${App}/${Env}/secrets/*

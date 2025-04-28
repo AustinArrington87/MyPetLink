@@ -190,7 +190,7 @@
         <div class="paw-print text-8xl absolute -top-4 -right-4">🐾</div>
         <h1 class="text-2xl font-bold mb-4 text-orange-800">Welcome, {{ user_name }}! 🐾</h1>
         <p class="text-gray-600 relative z-10">
-            Let's take care of your furry friend! Upload vet records, check their health, or get personalized tips.
+            Let's take care of your furry friend! Create and search for rescue tickets, upload vet records, and get personalized tips.
         </p>
         
         {% if pets|length > 0 %}
@@ -219,6 +219,45 @@
             </a>
         </div>
         {% endif %}
+    </div>
+
+    <!-- Move this section to the top, right after the welcome card -->
+    <div class="analysis-card rounded-2xl p-6 shadow-lg mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-red-800 flex items-center">
+            <span class="text-2xl mr-2">🆘</span> Report Rescue Animal
+        </h2>
+        <button onclick="openRescueForm()" 
+                class="w-full bg-red-500 text-white px-6 py-3 rounded-full hover:bg-red-600 transform transition-all hover:scale-105 shadow-md flex items-center justify-center">
+            <span class="text-xl mr-2">+</span> Report Animal in Need
+        </button>
+    </div>
+
+    <!-- Add the new Find Rescues section -->
+    <div class="analysis-card rounded-2xl p-6 shadow-lg mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-purple-800 flex items-center">
+            <span class="text-2xl mr-2">🔍</span> Find Rescues
+        </h2>
+        <p class="text-gray-600 mb-4">Enter the zipcode of the area you are searching for active rescue tickets.</p>
+        <div class="flex gap-4">
+            <input type="text" 
+                   id="searchZipcode" 
+                   placeholder="Enter zipcode (e.g., 19123)" 
+                   class="flex-1 border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                   pattern="[0-9]{5}"
+                   maxlength="5">
+            <button onclick="searchRescues()" 
+                    class="bg-purple-500 text-white px-6 py-2 rounded-xl hover:bg-purple-600 transform transition-all hover:scale-105 shadow-md">
+                Search
+            </button>
+        </div>
+        
+        <!-- Results container -->
+        <div id="rescueResults" class="mt-6 space-y-4">
+            <!-- Results will be populated here -->
+        </div>
+
+        <!-- Under the rescueResults div in Find Rescues section -->
+        <div id="petfinderOrgs" class="mt-6"></div>
     </div>
 
     <!-- Vet Record Analysis -->
