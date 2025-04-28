@@ -29,6 +29,7 @@ from email.mime.text import MIMEText
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import re
+import requests
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -58,6 +59,28 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Store token and expiry globally (for demo; for production, use a better cache)
+petfinder_token = None
+petfinder_token_expiry = 0
+
+def get_petfinder_token():
+    global petfinder_token, petfinder_token_expiry
+    if petfinder_token and time.time() < petfinder_token_expiry:
+        return petfinder_token
+
+    url = "https://api.petfinder.com/v2/oauth2/token"
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": os.environ.get("PETFINDER_CLIENT_ID"),
+        "client_secret": os.environ.get("PETFINDER_CLIENT_SECRET")
+    }
+    resp = requests.post(url, data=data)
+    resp.raise_for_status()
+    token_data = resp.json()
+    petfinder_token = token_data["access_token"]
+    petfinder_token_expiry = time.time() + token_data["expires_in"] - 60  # buffer
+    return petfinder_token
 
 @lru_cache(maxsize=1)
 def get_gmail_service():
@@ -814,6 +837,28 @@ def search_rescues():
             'success': False,
             'error': 'Failed to search rescues. Please try again.'
         }), 500
+
+@app.route('/api/petfinder/organizations', methods=['GET'])
+def petfinder_organizations():
+    zipcode = request.args.get('zipcode', '').strip()
+    if not zipcode or not zipcode.isdigit() or len(zipcode) != 5:
+        return jsonify({'success': False, 'error': 'Please provide a valid 5-digit zipcode'}), 400
+
+    try:
+        token = get_petfinder_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {
+            "location": zipcode,
+            "distance": 50,  # miles, adjust as needed
+            "limit": 5
+        }
+        resp = requests.get("https://api.petfinder.com/v2/organizations", headers=headers, params=params)
+        resp.raise_for_status()
+        orgs = resp.json().get("organizations", [])
+        return jsonify({'success': True, 'organizations': orgs})
+    except Exception as e:
+        logger.error(f"PetFinder API error: {e}")
+        return jsonify({'success': False, 'error': 'Failed to fetch organizations from PetFinder.'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001, use_reloader=True)
