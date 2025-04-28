@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, jsonify, session, url_for, send_file
+from flask import Flask, render_template, request, jsonify, session, url_for, send_file, redirect
 from werkzeug.utils import secure_filename
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from gpt_agent import analyze_health_records, analyze_poop_image
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -15,9 +15,9 @@ from dotenv import load_dotenv, find_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
+import urllib.parse
 import uuid
 import json
-from database import get_db_connection
 from PIL import Image
 import io
 import time
@@ -30,17 +30,10 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import re
 import requests
+from authlib.integrations.flask_client import OAuth
+from werkzeug.security import generate_password_hash, check_password_hash
+from jose import jwt
 
-ENV_FILE = find_dotenv()
-if ENV_FILE:
-    load_dotenv(ENV_FILE)
-
-# Initialize OpenAI client
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),
-    organization=os.environ.get("OPENAI_ORG")
-)
-translation_api_key=os.environ.get("TRANSLATION_API_KEY")
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -48,8 +41,42 @@ logging.basicConfig(
 )
 logger = logging.getLogger('HealthAnalysisApp')
 
+# Load environment variables
+ENV_FILE = find_dotenv()
+if ENV_FILE:
+    load_dotenv(ENV_FILE)
+    logger.info("Environment variables loaded from .env file")
+else:
+    logger.warning("No .env file found, using environment variables from system")
+
+# Import after environment is loaded
+from database import get_db_connection
+
+# Initialize OpenAI client
+client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    organization=os.environ.get("OPENAI_ORG")
+)
+translation_api_key=os.environ.get("TRANSLATION_API_KEY")
+
 app = Flask(__name__)
-app.secret_key = 'dev-secret-key-123'  # Required for session management
+app.secret_key = os.environ.get("APP_SECRET_KEY", 'dev-secret-key-123')  # Required for session management
+
+# Auth0 configuration
+oauth = OAuth(app)
+auth0 = oauth.register(
+    'auth0',
+    client_id=os.environ.get("AUTH0_CLIENT_ID"),
+    client_secret=os.environ.get("AUTH0_CLIENT_SECRET"),
+    api_base_url=f'https://{os.environ.get("AUTH0_DOMAIN")}',
+    access_token_url=f'https://{os.environ.get("AUTH0_DOMAIN")}/oauth/token',
+    authorize_url=f'https://{os.environ.get("AUTH0_DOMAIN")}/authorize',
+    jwks_uri=f'https://{os.environ.get("AUTH0_DOMAIN")}/.well-known/jwks.json',
+    server_metadata_url=f'https://{os.environ.get("AUTH0_DOMAIN")}/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid profile email',
+    },
+)
 
 # Configure upload folder
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -141,19 +168,187 @@ def get_current_user():
 
     return User(user_name, vitals_data, user_type)
 
+# Auth0 routes
+@app.route('/login')
+def login():
+    return auth0.authorize_redirect(redirect_uri=os.environ.get("AUTH0_CALLBACK_URL"))
+
+@app.route('/callback')
+def callback_handling():
+    token = auth0.authorize_access_token()
+    resp = auth0.get('userinfo')
+    userinfo = resp.json()
+    
+    # Store user info in session
+    session['jwt_payload'] = userinfo
+    session['profile'] = {
+        'user_id': userinfo['sub'],
+        'name': userinfo.get('name', ''),
+        'picture': userinfo.get('picture', ''),
+        'email': userinfo.get('email', '')
+    }
+    
+    # Extract first and last name for compatibility with existing code
+    full_name = userinfo.get('name', 'Guest')
+    session['user_name'] = full_name
+    
+    # Parse name for database storage
+    name_parts = full_name.split(' ', 1) if ' ' in full_name else [full_name, '']
+    first_name = name_parts[0]
+    last_name = name_parts[1] if len(name_parts) > 1 else ''
+    
+    # Store user in database
+    from models import User
+    from database import get_db_session, close_db_session
+    
+    db = get_db_session()
+    try:
+        # Check if user exists
+        user = db.query(User).filter(User.auth0_id == userinfo['sub']).first()
+        
+        if not user:
+            # Create new user
+            user = User(
+                auth0_id=userinfo['sub'],
+                email=userinfo.get('email', ''),
+                first_name=first_name,
+                last_name=last_name,
+                user_type='patient'  # Default user type
+            )
+            db.add(user)
+            db.commit()
+        
+        # Store user ID in session for database operations (convert UUID to string)
+        session['db_user_id'] = str(user.id)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error storing user in database: {e}")
+    finally:
+        close_db_session(db)
+    
+    return redirect('/')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    
+    # Check environment to determine if we should force HTTPS
+    env = os.environ.get("ENVIRONMENT", "development")
+    
+    # Get base URL - either from request or with url_for
+    if env != "development" and request.host and not request.host.startswith('localhost'):
+        # In production: Force HTTPS in the returnTo URL
+        base_url = f"https://{request.host}"
+        return_to = f"{base_url}/"
+    else:
+        # In development: Use whatever protocol was in the request
+        return_to = url_for('home', _external=True)
+    
+    params = {
+        'returnTo': return_to,
+        'client_id': os.environ.get("AUTH0_CLIENT_ID")
+    }
+    
+    logout_url = auth0.api_base_url + '/v2/logout?' + '&'.join([f'{key}={urllib.parse.quote(value)}' for key, value in params.items()])
+    return redirect(logout_url)
+
+def requires_auth(f):
+    """Decorator to check if user is authenticated"""
+    def decorated(*args, **kwargs):
+        if 'profile' not in session:
+            return redirect('/login')
+        return f(*args, **kwargs)
+    decorated.__name__ = f.__name__
+    return decorated
+
 @app.route('/')
 def home():
     # Get user name from session, default to "Guest" if not found
     user_name = session.get('user_name', 'Guest')
-    return render_template('home.html', user_name=user_name)
+    is_authenticated = 'profile' in session
+    
+    # Get pet information for authenticated users
+    pets = []
+    active_pet = {}
+    
+    if is_authenticated:
+        from models import Pet
+        from database import get_db_session, close_db_session
+        import uuid
+        
+        user_id = session.get('db_user_id')
+        
+        if user_id:
+            # Convert string user_id to UUID for database
+            try:
+                user_id_uuid = uuid.UUID(user_id)
+            except ValueError:
+                logger.error(f"Invalid UUID format in session.db_user_id: {user_id}")
+                return redirect('/logout')  # Logout to reset session if ID is invalid
+                
+            db = get_db_session()
+            try:
+                # Get all pets for the user
+                db_pets = db.query(Pet).filter(Pet.user_id == user_id_uuid).all()
+                pets = [pet.to_dict() for pet in db_pets]
+                
+                # Get active pet
+                active_pet_id = session.get('active_pet_id')
+                
+                if active_pet_id:
+                    # Find active pet in the list (both IDs will be strings here)
+                    for pet in pets:
+                        if pet['id'] == active_pet_id:
+                            active_pet = pet
+                            break
+                
+                # If no active pet selected but pets exist, use the first one
+                if not active_pet and pets:
+                    active_pet = pets[0]
+                    session['active_pet_id'] = active_pet['id']  # Store as string
+                    
+                    # Also update database to mark this pet as active
+                    try:
+                        # Convert back to UUID for database query
+                        pet_id_uuid = uuid.UUID(active_pet['id'])
+                        active_db_pet = db.query(Pet).filter(Pet.id == pet_id_uuid).first()
+                        
+                        if active_db_pet:
+                            # Set all pets to inactive
+                            db.query(Pet).filter(Pet.user_id == user_id_uuid).update({"is_active": False})
+                            # Set selected pet to active
+                            active_db_pet.is_active = True
+                            db.commit()
+                    except Exception as e:
+                        logger.error(f"Error updating active pet: {e}")
+            except Exception as e:
+                logger.error(f"Error retrieving pets from database: {e}")
+            finally:
+                close_db_session(db)
+    
+    return render_template('home.html', 
+                          user_name=user_name, 
+                          is_authenticated=is_authenticated,
+                          pets=pets,
+                          active_pet=active_pet)
 
 @app.route('/upload', methods=['POST'])
+@requires_auth
 def upload_file():
+    db = None
     try:
         logger.info("Upload endpoint hit")
         if 'files[]' not in request.files:
             logger.error("No files in request")
             return jsonify({'success': False, 'error': 'No files uploaded'}), 400
+
+        # Get user ID and active pet ID from session
+        user_id = session.get('db_user_id')
+        active_pet_id = session.get('active_pet_id')
+        
+        if not user_id or not active_pet_id:
+            logger.error("Missing user_id or active_pet_id in session")
+            return jsonify({'success': False, 'error': 'User or pet not found'}), 401
 
         files = request.files.getlist('files[]')
         logger.info(f"Received {len(files)} files")
@@ -162,65 +357,728 @@ def upload_file():
             logger.error("Empty files list")
             return jsonify({'success': False, 'error': 'No files selected'}), 400
 
+        # Import necessary modules
+        from models import PetFile
+        from database import get_db_session, close_db_session
+        from storage import S3Storage
+        
+        # Initialize S3 storage client
+        s3_storage = S3Storage()
+        
         file_paths = []
+        uploaded_files = []
+        
+        # Process files first (save locally and upload to S3)
+        processed_files = []
+        
         for file in files:
             if file and file.filename:
                 filename = secure_filename(file.filename)
                 logger.info(f"Processing file: {filename}")
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                
                 try:
-                    logger.info(f"Saving file to: {file_path}")
+                    # Save locally for AI processing
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    logger.info(f"Saving file to local filesystem: {file_path}")
                     file.save(file_path)
-                    file_paths.append(file_path)
-                    logger.info(f"File saved successfully: {file_path}")
-                except Exception as e:
-                    logger.error(f"Error saving file {filename}: {str(e)}")
-                    return jsonify({'success': False, 'error': f'Error saving file {filename}: {str(e)}'}), 400
-
-        logger.info(f"Analyzing files: {file_paths}")
-        result = analyze_health_records(file_paths, document_type='vet_record')
-        logger.info(f"Analysis result: {result}")
-
-        # Clean up files
-        for file_path in file_paths:
+                    
+                    # Get file size and content type
+                    file_size = os.path.getsize(file_path)
+                    content_type = file.content_type if hasattr(file, 'content_type') else 'application/octet-stream'
+                    
+                    # Upload to S3
+                    logger.info(f"Uploading file to S3: {filename}")
+                    file.seek(0)  # Rewind file for S3 upload
+                    
+                    s3_result = s3_storage.upload_file_object(
+                        file,
+                        user_id,
+                        active_pet_id,
+                        'health_record',
+                        filename
+                    )
+                    
+                    if s3_result:
+                        processed_files.append({
+                            'filename': filename,
+                            'file_path': file_path,
+                            's3_path': s3_result,
+                            'content_type': content_type,
+                            'file_size': file_size
+                        })
+                        file_paths.append(file_path)
+                except Exception as file_error:
+                    logger.error(f"Error processing file {filename}: {str(file_error)}")
+                    return jsonify({'success': False, 'error': f'Error processing file {filename}: {str(file_error)}'}), 400
+        
+        # If no files were processed successfully, return an error
+        if not processed_files:
+            return jsonify({'success': False, 'error': 'No files were processed successfully'}), 400
+        
+        # Now save to database - each file in a separate transaction
+        file_records = []
+        
+        for file_info in processed_files:
+            # Get a fresh database session for each file to avoid transaction timeouts
+            db = get_db_session()
             try:
-                os.remove(file_path)
-                logger.info(f"Cleaned up file: {file_path}")
-            except Exception as e:
-                logger.warning(f"Failed to clean up file {file_path}: {e}")
-
-        return jsonify(result)
-
+                # Create database record
+                pet_file = PetFile(
+                    pet_id=active_pet_id,
+                    file_type='health_record',
+                    original_filename=file_info['filename'],
+                    s3_path=file_info['s3_path'],
+                    local_path=file_info['file_path'],
+                    content_type=file_info['content_type'],
+                    file_size=file_info['file_size']
+                )
+                
+                db.add(pet_file)
+                db.commit()
+                file_records.append(pet_file)
+                logger.info(f"Created database record for file: {file_info['filename']}")
+            except Exception as db_error:
+                if db:
+                    db.rollback()
+                logger.error(f"Database error saving file {file_info['filename']}: {str(db_error)}")
+                # Continue with other files even if one fails to save to DB
+            finally:
+                if db:
+                    close_db_session(db)
+                    db = None
+        
+        # Now analyze the files
+        logger.info(f"Analyzing files: {file_paths}")
+        
+        try:
+            result = analyze_health_records(file_paths, document_type='vet_record')
+            logger.info(f"Analysis result: {result}")
+            
+            # Update file records with analysis results - one at a time
+            for pet_file in file_records:
+                db = get_db_session()
+                try:
+                    # Fetch the record again to ensure it's still valid
+                    updated_file = db.query(PetFile).filter(PetFile.id == pet_file.id).first()
+                    if updated_file:
+                        updated_file.analysis_json = result
+                        db.commit()
+                except Exception as analysis_db_error:
+                    if db:
+                        db.rollback()
+                    logger.error(f"Database error updating analysis: {str(analysis_db_error)}")
+                finally:
+                    if db:
+                        close_db_session(db)
+                        db = None
+            
+            return jsonify(result)
+        except Exception as analysis_error:
+            logger.error(f"Error analyzing files: {str(analysis_error)}")
+            # Return a success message with the issue
+            return jsonify({
+                'success': True, 
+                'message': 'Files uploaded successfully but could not be analyzed',
+                'error': str(analysis_error)
+            })
+            
     except Exception as e:
+        if db:
+            db.rollback()
+            close_db_session(db)
         logger.error(f"Upload error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/profile')
+@requires_auth
 def profile():
-    # Get pet profile from session or use empty dict
-    pet_data = session.get('pet_profile', {})
-    return render_template('profile.html', pet=pet_data)
+    # Get user profile data
+    user_profile = session.get('profile', {})
+    user_id = session.get('db_user_id')
+    
+    if not user_id:
+        return redirect('/login')  # Redirect if no user ID in session
+    
+    from models import Pet
+    from database import get_db_session, close_db_session
+    import uuid
+    
+    # Get pets and active pet from database
+    pets = []
+    active_pet = {}
+    is_first_pet = True
+    
+    # Convert string user_id to UUID for database query
+    try:
+        user_id_uuid = uuid.UUID(user_id)
+    except ValueError:
+        logger.error(f"Invalid UUID format in session.db_user_id: {user_id}")
+        return redirect('/logout')  # Logout to reset session if ID is invalid
+    
+    db = get_db_session()
+    try:
+        # Get all pets for the user
+        db_pets = db.query(Pet).filter(Pet.user_id == user_id_uuid).all()
+        pets = [pet.to_dict() for pet in db_pets]
+        is_first_pet = len(pets) == 0
+        
+        # Get active pet
+        if not is_first_pet:
+            # First try to get pet marked as active in DB
+            active_db_pet = db.query(Pet).filter(Pet.user_id == user_id_uuid, Pet.is_active == True).first()
+            
+            # If no active pet in DB but we have pets, mark the first one as active
+            if not active_db_pet and db_pets:
+                active_db_pet = db_pets[0]
+                # Set all pets to inactive
+                db.query(Pet).filter(Pet.user_id == user_id_uuid).update({"is_active": False})
+                # Set first pet to active
+                active_db_pet.is_active = True
+                db.commit()
+            
+            if active_db_pet:
+                active_pet = active_db_pet.to_dict()
+                session['active_pet_id'] = active_pet['id']  # ID is already a string from to_dict()
+    except Exception as e:
+        logger.error(f"Error getting pets from database: {e}")
+    finally:
+        close_db_session(db)
+    
+    # For backward compatibility, also check old pet_profile format
+    if is_first_pet and session.get('pet_profile'):
+        old_pet = session.get('pet_profile', {})
+        if old_pet:
+            # We'll handle this migration when saving the pet profile
+            is_migrating_old_pet = True
+            active_pet = old_pet
+                
+    return render_template('profile.html', 
+                          active_pet=active_pet,
+                          pets=pets,
+                          is_first_pet=is_first_pet,
+                          user_profile=user_profile)
 
 @app.route('/update_pet_profile', methods=['POST'])
+@requires_auth
 def update_pet_profile():
     try:
+        # Get user ID from session
+        user_id = session.get('db_user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User not found'}), 401
+        
+        # Import requirements
+        from models import Pet, PetFile
+        from database import get_db_session, close_db_session
+        import uuid
+        
+        # Convert string user_id to UUID for database operations
+        try:
+            user_id_uuid = uuid.UUID(user_id)
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid user ID format'}), 400
+            
         data = request.json
         
-        # Store in session for now (can add database storage later)
-        session['pet_profile'] = {
-            'name': data.get('pet_name'),
-            'species': data.get('species'),
-            'breed': data.get('breed'),
-            'age': data.get('age'),
-            'weight': data.get('weight'),
-            'health_conditions': data.get('health_conditions'),
-            'last_checkup': data.get('last_checkup'),
-            'state': data.get('state')
-        }
+        # Get pet_id from request or generate new one
+        pet_id = data.get('pet_id')
+        is_new = not pet_id or pet_id == ''
         
-        return jsonify({'success': True})
+        db = get_db_session()
+        try:
+            # Find existing pet or create a new one
+            if is_new:
+                # Process avatar if it's a base64 image
+                avatar_data = data.get('avatar')
+                avatar_url = None
+                
+                if avatar_data and isinstance(avatar_data, str) and avatar_data.startswith('data:'):
+                    try:
+                        # Import necessary modules for image processing
+                        import base64
+                        import io
+                        from PIL import Image
+                        import os
+                        from storage import S3Storage
+                        
+                        # Extract image data from base64 string
+                        image_format = avatar_data.split(';')[0].split('/')[1]
+                        base64_data = avatar_data.split(',')[1]
+                        
+                        # Decode base64 data
+                        image_data = base64.b64decode(base64_data)
+                        
+                        # Create a temporary file
+                        temp_filename = f"temp_avatar_{uuid.uuid4()}.{image_format}"
+                        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+                        
+                        # Save image to temp file
+                        with open(temp_path, 'wb') as f:
+                            f.write(image_data)
+                        
+                        # Initialize S3 storage
+                        s3_storage = S3Storage()
+                        
+                        # Create placeholder pet_id for S3 path
+                        temp_pet_id = str(uuid.uuid4())
+                        
+                        # Upload to S3
+                        s3_result = s3_storage.upload_file(
+                            temp_path,
+                            user_id,
+                            temp_pet_id,  # We'll update this after pet creation
+                            'avatar',
+                            f"{data.get('pet_name', 'pet')}_avatar.{image_format}"
+                        )
+                        
+                        # Get S3 URL
+                        avatar_url = s3_result
+                        
+                        # Remove temp file
+                        os.remove(temp_path)
+                    except Exception as avatar_error:
+                        logger.error(f"Error processing avatar image: {avatar_error}")
+                        avatar_url = None
+                elif avatar_data and not avatar_data.startswith('data:'):
+                    # It's already a URL
+                    avatar_url = avatar_data
+                
+                # Create new pet
+                pet = Pet(
+                    user_id=user_id_uuid,
+                    name=data.get('pet_name', ''),
+                    species=data.get('species', ''),
+                    breed=data.get('breed', ''),
+                    age_years=data.get('age', {}).get('years', 0) if data.get('age') else 0,
+                    age_months=data.get('age', {}).get('months', 0) if data.get('age') else 0,
+                    weight=data.get('weight'),
+                    health_conditions=data.get('health_conditions', ''),
+                    last_checkup=data.get('last_checkup'),
+                    state=data.get('state', ''),
+                    city=data.get('city', ''),
+                    vet_clinic=data.get('vet_clinic', ''),
+                    vet_phone=data.get('vet_phone', ''),
+                    vet_address=data.get('vet_address', ''),
+                    avatar_url=avatar_url,
+                    is_active=True
+                )
+                
+                # Set all pets to inactive
+                db.query(Pet).filter(Pet.user_id == user_id_uuid).update({"is_active": False})
+                
+                # Add the new pet
+                db.add(pet)
+                db.commit()
+                
+                # Get the ID of the newly created pet (as string for JSON)
+                pet_id = str(pet.id)
+                
+                # If we processed an avatar, create a PetFile record for it
+                if avatar_url and pet_id:
+                    try:
+                        # Create pet file record
+                        pet_file = PetFile(
+                            pet_id=pet.id,  # Use the UUID object directly
+                            file_type='avatar',
+                            original_filename=f"{pet.name}_avatar.{image_format if 'image_format' in locals() else 'jpg'}",
+                            s3_path=avatar_url,
+                            content_type=f"image/{image_format if 'image_format' in locals() else 'jpeg'}"
+                        )
+                        db.add(pet_file)
+                        db.commit()
+                    except Exception as file_error:
+                        logger.error(f"Error creating pet file record: {file_error}")
+                        # Continue anyway since the pet was created successfully
+            else:
+                # Convert pet_id to UUID for database query
+                try:
+                    pet_id_uuid = uuid.UUID(pet_id)
+                except ValueError:
+                    return jsonify({'success': False, 'error': 'Invalid pet ID format'}), 400
+                    
+                # Find the existing pet
+                pet = db.query(Pet).filter(Pet.id == pet_id_uuid, Pet.user_id == user_id_uuid).first()
+                
+                if not pet:
+                    return jsonify({'success': False, 'error': 'Pet not found'}), 404
+                
+                # Update pet properties
+                pet.name = data.get('pet_name', pet.name)
+                pet.species = data.get('species', pet.species)
+                pet.breed = data.get('breed', pet.breed)
+                pet.age_years = data.get('age', {}).get('years', pet.age_years) if data.get('age') else pet.age_years
+                pet.age_months = data.get('age', {}).get('months', pet.age_months) if data.get('age') else pet.age_months
+                pet.weight = data.get('weight', pet.weight)
+                pet.health_conditions = data.get('health_conditions', pet.health_conditions)
+                pet.last_checkup = data.get('last_checkup', pet.last_checkup)
+                pet.state = data.get('state', pet.state)
+                pet.city = data.get('city', pet.city)
+                pet.vet_clinic = data.get('vet_clinic', pet.vet_clinic)
+                pet.vet_phone = data.get('vet_phone', pet.vet_phone)
+                pet.vet_address = data.get('vet_address', pet.vet_address)
+                
+                # Only update avatar if provided and it's a base64 image
+                avatar_data = data.get('avatar')
+                if avatar_data and isinstance(avatar_data, str) and avatar_data.startswith('data:'):
+                    try:
+                        # Import necessary modules for image processing
+                        import base64
+                        import io
+                        from PIL import Image
+                        import os
+                        from storage import S3Storage
+                        
+                        # Extract image data from base64 string
+                        image_format = avatar_data.split(';')[0].split('/')[1]
+                        base64_data = avatar_data.split(',')[1]
+                        
+                        # Decode base64 data
+                        image_data = base64.b64decode(base64_data)
+                        
+                        # Create a temporary file
+                        temp_filename = f"temp_avatar_{uuid.uuid4()}.{image_format}"
+                        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+                        
+                        # Save image to temp file
+                        with open(temp_path, 'wb') as f:
+                            f.write(image_data)
+                        
+                        # Initialize S3 storage
+                        s3_storage = S3Storage()
+                        
+                        # Upload to S3
+                        s3_result = s3_storage.upload_file(
+                            temp_path,
+                            user_id,
+                            pet_id,
+                            'avatar',
+                            f"{pet.name or 'pet'}_avatar.{image_format}"
+                        )
+                        
+                        # Get S3 URL
+                        avatar_url = s3_result
+                        
+                        # Remove temp file
+                        os.remove(temp_path)
+                        
+                        # Update pet's avatar URL
+                        pet.avatar_url = avatar_url
+                        
+                        # Create pet file record
+                        pet_file = PetFile(
+                            pet_id=pet_id_uuid,
+                            file_type='avatar',
+                            original_filename=f"{pet.name or species}_avatar.{image_format}",
+                            s3_path=avatar_url,
+                            content_type=f"image/{image_format}"
+                        )
+                        
+                        # Add file record to be committed with other changes
+                        db.add(pet_file)
+                    except Exception as avatar_error:
+                        logger.error(f"Error processing avatar image: {avatar_error}")
+                        # Continue with other updates even if avatar processing fails
+                
+                # Set all pets to inactive
+                db.query(Pet).filter(Pet.user_id == user_id_uuid).update({"is_active": False})
+                
+                # Set this pet to active
+                pet.is_active = True
+                
+                db.commit()
+            
+            # Update session with active pet ID
+            session['active_pet_id'] = pet_id
+            
+            # Count the number of pets for this user
+            pet_count = db.query(Pet).filter(Pet.user_id == user_id).count()
+            
+            return jsonify({
+                'success': True,
+                'pet_id': pet_id,
+                'is_first_pet': pet_count == 1
+            })
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Database error updating pet profile: {e}")
+            return jsonify({'success': False, 'error': 'Database error'}), 500
+        finally:
+            close_db_session(db)
     except Exception as e:
         logger.error(f"Profile update error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception as e:
+        logger.error(f"Profile update error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/get_pets', methods=['GET'])
+@requires_auth
+def get_pets():
+    try:
+        user_id = session.get('db_user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User not found'}), 401
+            
+        from models import Pet
+        from database import get_db_session, close_db_session
+        
+        db = get_db_session()
+        try:
+            # Get all pets for the user
+            db_pets = db.query(Pet).filter(Pet.user_id == user_id).all()
+            pets = [pet.to_dict() for pet in db_pets]
+            
+            active_pet_id = session.get('active_pet_id')
+            
+            return jsonify({
+                'success': True,
+                'pets': pets,
+                'active_pet_id': active_pet_id
+            })
+        except Exception as e:
+            logger.error(f"Database error fetching pets: {e}")
+            return jsonify({'success': False, 'error': 'Database error'}), 500
+        finally:
+            close_db_session(db)
+    except Exception as e:
+        logger.error(f"Error fetching pets: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
+@app.route('/get_pet_files/<pet_id>', methods=['GET'])
+@requires_auth
+def get_pet_files(pet_id):
+    try:
+        user_id = session.get('db_user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User not found'}), 401
+            
+        file_type = request.args.get('type', None)  # Optional file type filter
+            
+        from models import Pet, PetFile
+        from database import get_db_session, close_db_session
+        import uuid
+        
+        # Convert string IDs to UUIDs for database operations
+        try:
+            user_id_uuid = uuid.UUID(user_id)
+            pet_id_uuid = uuid.UUID(pet_id)
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid ID format'}), 400
+        
+        db = get_db_session()
+        try:
+            # First verify that the pet belongs to the user
+            pet = db.query(Pet).filter(Pet.id == pet_id_uuid, Pet.user_id == user_id_uuid).first()
+            
+            if not pet:
+                return jsonify({'success': False, 'error': 'Pet not found or not authorized'}), 404
+                
+            # Query files for the pet
+            query = db.query(PetFile).filter(PetFile.pet_id == pet_id_uuid)
+            
+            # Apply file type filter if provided
+            if file_type:
+                query = query.filter(PetFile.file_type == file_type)
+                
+            # Sort by creation date, newest first
+            query = query.order_by(PetFile.created_at.desc())
+            
+            # Execute query and convert to dictionaries
+            files = [pet_file.to_dict() for pet_file in query.all()]
+            
+            return jsonify({
+                'success': True,
+                'files': files,
+                'count': len(files)
+            })
+        except Exception as e:
+            logger.error(f"Database error fetching pet files: {e}")
+            return jsonify({'success': False, 'error': 'Database error'}), 500
+        finally:
+            close_db_session(db)
+    except Exception as e:
+        logger.error(f"Error fetching pet files: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
+@app.route('/set_active_pet/<pet_id>', methods=['POST'])
+@requires_auth
+def set_active_pet(pet_id):
+    try:
+        user_id = session.get('db_user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User not found'}), 401
+        
+        from models import Pet
+        from database import get_db_session, close_db_session
+        import uuid
+        
+        # Convert string IDs to UUIDs for database operations
+        try:
+            user_id_uuid = uuid.UUID(user_id)
+            pet_id_uuid = uuid.UUID(pet_id)
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid ID format'}), 400
+        
+        db = get_db_session()
+        try:
+            # Verify the pet belongs to the user
+            pet = db.query(Pet).filter(Pet.id == pet_id_uuid, Pet.user_id == user_id_uuid).first()
+            
+            if not pet:
+                return jsonify({'success': False, 'error': 'Pet not found'}), 404
+            
+            # Set all user's pets to inactive
+            db.query(Pet).filter(Pet.user_id == user_id_uuid).update({"is_active": False})
+            
+            # Set this pet to active
+            pet.is_active = True
+            db.commit()
+            
+            # Update session (store as string)
+            session['active_pet_id'] = str(pet_id_uuid)
+            
+            return jsonify({'success': True})
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Database error setting active pet: {e}")
+            return jsonify({'success': False, 'error': 'Database error'}), 500
+        finally:
+            close_db_session(db)
+            
+    except Exception as e:
+        logger.error(f"Error setting active pet: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/generate_pet_avatar', methods=['POST'])
+@requires_auth
+def generate_pet_avatar():
+    try:
+        data = request.json
+        species = data.get('species', '')
+        breed = data.get('breed', '')
+        pet_name = data.get('pet_name', '')
+        pet_id = data.get('pet_id', '')
+        avatar_data = data.get('avatar', '')  # This may be a base64 image
+        
+        # Get user ID from session
+        user_id = session.get('db_user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User not found'}), 401
+        
+        # Import necessary modules
+        import uuid
+        import base64
+        import io
+        from PIL import Image
+        import os
+        from models import PetFile, Pet
+        from database import get_db_session, close_db_session
+        from storage import S3Storage
+        
+        # Convert user_id to UUID
+        try:
+            user_id_uuid = uuid.UUID(user_id)
+            pet_id_uuid = uuid.UUID(pet_id) if pet_id else None
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid ID format'}), 400
+
+        # Default avatar if no custom avatar is provided
+        placeholder_avatars = {
+            'dog': '/static/img/avatars/dog_avatar.png',
+            'cat': '/static/img/avatars/cat_avatar.png',
+            'bird': '/static/img/avatars/bird_avatar.png',
+            'reptile': '/static/img/avatars/reptile_avatar.png',
+            'fish': '/static/img/avatars/fish_avatar.png',
+            'rabbit': '/static/img/avatars/rabbit_avatar.png',
+            'ferret': '/static/img/avatars/ferret_avatar.png',
+            'farm animal': '/static/img/avatars/farm_avatar.png'
+        }
+        
+        # Default to a placeholder if no avatar data is provided
+        if not avatar_data or not avatar_data.startswith('data:'):
+            avatar_path = placeholder_avatars.get(species.lower(), '/static/img/avatars/default_avatar.png')
+            avatar_url = avatar_path
+            return jsonify({
+                'success': True,
+                'avatar_url': avatar_url
+            })
+        
+        # Process base64 image data
+        try:
+            # Extract image data from base64 string
+            # Format is typically: data:image/jpeg;base64,/9j/4AAQ...
+            image_format = avatar_data.split(';')[0].split('/')[1]
+            base64_data = avatar_data.split(',')[1]
+            
+            # Decode base64 data
+            image_data = base64.b64decode(base64_data)
+            
+            # Create a temporary file
+            temp_filename = f"temp_avatar_{uuid.uuid4()}.{image_format}"
+            temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+            
+            # Save image to temp file
+            with open(temp_path, 'wb') as f:
+                f.write(image_data)
+            
+            # Initialize S3 storage
+            s3_storage = S3Storage()
+            
+            # Upload to S3
+            s3_result = s3_storage.upload_file(
+                temp_path,
+                user_id,
+                pet_id if pet_id else 'temp',
+                'avatar',
+                f"{pet_name or 'pet'}_avatar.{image_format}"
+            )
+            
+            # Get S3 URL
+            avatar_url = s3_result
+            
+            # Remove temp file
+            os.remove(temp_path)
+            
+            # Update database if pet_id is provided
+            if pet_id_uuid:
+                db = get_db_session()
+                try:
+                    # Create pet file record
+                    pet_file = PetFile(
+                        pet_id=pet_id_uuid,
+                        file_type='avatar',
+                        original_filename=f"{pet_name or species}_avatar.{image_format}",
+                        s3_path=avatar_url,
+                        content_type=f"image/{image_format}"
+                    )
+                    
+                    # Add file record
+                    db.add(pet_file)
+                    
+                    # Update pet's avatar URL
+                    pet = db.query(Pet).filter(Pet.id == pet_id_uuid).first()
+                    if pet:
+                        pet.avatar_url = avatar_url
+                        
+                    db.commit()
+                except Exception as db_error:
+                    db.rollback()
+                    logger.error(f"Database error saving avatar: {db_error}")
+                    return jsonify({'success': False, 'error': 'Database error'}), 500
+                finally:
+                    close_db_session(db)
+            
+            return jsonify({
+                'success': True,
+                'avatar_url': avatar_url
+            })
+            
+        except Exception as e:
+            logger.error(f"Error processing avatar image: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+            
+    except Exception as e:
+        logger.error(f"Avatar generation error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/update_profile', methods=['POST'])
@@ -527,36 +1385,122 @@ def get_provider_url():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/analyze_poop', methods=['POST'])
-async def analyze_poop():
+@requires_auth
+def analyze_poop():
     try:
         if 'image' not in request.files:
             return jsonify({'success': False, 'error': 'No image uploaded'})
+
+        # Get user ID and active pet ID from session
+        user_id = session.get('db_user_id')
+        active_pet_id = session.get('active_pet_id')
+        
+        if not user_id or not active_pet_id:
+            logger.error("Missing user_id or active_pet_id in session")
+            return jsonify({'success': False, 'error': 'User or pet not found'}), 401
 
         image = request.files['image']
         if not image.filename:
             return jsonify({'success': False, 'error': 'No image selected'})
 
-        # Save the image temporarily
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(image.filename))
-        image.save(temp_path)
+        # Import necessary modules
+        from models import PetFile
+        from database import get_db_session, close_db_session
+        from storage import S3Storage
 
+        # Initialize S3 storage client
+        s3_storage = S3Storage()
+
+        # Secure filename
+        filename = secure_filename(image.filename)
+        
+        # Save the image temporarily for analysis
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        image.save(temp_path)
+        
+        # Get file size and content type
+        file_size = os.path.getsize(temp_path)
+        content_type = image.content_type if hasattr(image, 'content_type') else 'image/jpeg'
+        
+        # Upload to S3
+        logger.info(f"Uploading poop image to S3: {filename}")
+        # Rewind file for S3 upload
+        image.seek(0)
+        
+        s3_result = s3_storage.upload_file_object(
+            image,
+            user_id,
+            active_pet_id,
+            'poop',
+            filename
+        )
+        
+        # Create database record
+        db = get_db_session()
+        pet_file = None
+        
         try:
-            # Run the analysis in an async context
-            loop = asyncio.get_event_loop()
-            analysis = await analyze_poop_image(temp_path)
+            # Create file record
+            pet_file = PetFile(
+                pet_id=active_pet_id,
+                file_type='poop',
+                original_filename=filename,
+                s3_path=s3_result,  # S3 URL
+                local_path=temp_path,
+                content_type=content_type,
+                file_size=file_size
+            )
             
-            return jsonify({
-                'success': True,
-                'result': {
-                    'summary': analysis.get('summary', ''),
-                    'concerns': analysis.get('concerns', ''),
-                    'recommendations': analysis.get('recommendations', '')
-                }
-            })
+            db.add(pet_file)
+            db.commit()
+            pet_file_id = pet_file.id
+            logger.info(f"Created database record for poop image: {filename}")
+            
+            # Create a new event loop for running the async analysis
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            
+            try:
+                # Run the async function using run_until_complete
+                analysis = new_loop.run_until_complete(analyze_poop_image(temp_path))
+                
+                # Update database record with analysis results
+                pet_file = db.query(PetFile).filter(PetFile.id == pet_file_id).first()
+                if pet_file:
+                    pet_file.analysis_json = analysis
+                    db.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'result': {
+                        'summary': analysis.get('summary', ''),
+                        'concerns': analysis.get('concerns', ''),
+                        'recommendations': analysis.get('recommendations', '')
+                    },
+                    'file_id': str(pet_file_id)  # Convert UUID to string for JSON
+                })
+            except Exception as analysis_error:
+                logger.error(f"Analysis error: {str(analysis_error)}")
+                # If analysis fails, still return success for the upload
+                return jsonify({
+                    'success': True,
+                    'message': 'Image uploaded successfully but analysis failed',
+                    'error': str(analysis_error)
+                })
+            finally:
+                # Close the event loop
+                new_loop.close()
+                # We keep the file on the server for future reference
+                # For production, you might want to implement a cleanup job
+                
+        except Exception as db_error:
+            if db:
+                db.rollback()
+            logger.error(f"Database error: {str(db_error)}")
+            return jsonify({'success': False, 'error': f'Database error: {str(db_error)}'}), 500
         finally:
-            # Clean up the temporary file
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            if db:
+                close_db_session(db)
 
     except Exception as e:
         logger.error(f"Error analyzing poop image: {str(e)}")

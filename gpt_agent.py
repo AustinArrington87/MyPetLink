@@ -206,7 +206,21 @@ async def analyze_poop_image(image_path):
     try:
         # Read the image file
         with open(image_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            image_data = image_file.read()
+        
+        # First upload the file to OpenAI
+        logger.info("Uploading image to OpenAI for analysis")
+        try:
+            # Upload the file to the OpenAI API
+            file_response = client.files.create(
+                file=open(image_path, "rb"),
+                purpose="assistants"
+            )
+            file_id = file_response.id
+            logger.info(f"Successfully uploaded image to OpenAI, file_id: {file_id}")
+        except Exception as upload_error:
+            logger.error(f"Error uploading image to OpenAI: {upload_error}")
+            raise upload_error
 
         # Create a thread for the analysis
         thread = client.beta.threads.create()
@@ -221,8 +235,8 @@ async def analyze_poop_image(image_path):
                     "text": "Please analyze this pet stool sample image. Consider color, consistency, and any visible abnormalities. Format the response in three sections: summary, concerns, and recommendations."
                 },
                 {
-                    "type": "image_file",
-                    "file_id": base64_image
+                    "type": "file_attachment",
+                    "file_id": file_id
                 }
             ]
         )
@@ -234,13 +248,19 @@ async def analyze_poop_image(image_path):
         )
 
         # Wait for completion
-        while run.status != 'completed':
+        max_retries = 30  # Maximum number of times to check for completion
+        retry_count = 0
+        while retry_count < max_retries:
             run = client.beta.threads.runs.retrieve(
                 thread_id=thread.id,
                 run_id=run.id
             )
-            if run.status == 'failed':
-                raise Exception("Analysis failed")
+            if run.status == 'completed':
+                break
+            elif run.status == 'failed':
+                error_msg = f"Analysis failed: {run.last_error}" if hasattr(run, 'last_error') else "Analysis failed"
+                raise Exception(error_msg)
+            retry_count += 1
             await asyncio.sleep(1)
 
         # Get the response

@@ -1,0 +1,75 @@
+# The manifest for the "api" service.
+# Read the full specification for the "Request-Driven Web Service" type at:
+# https://aws.github.io/copilot-cli/docs/manifest/rd-web-service/
+
+# Your service name will be used in naming your resources like log groups, App Runner services, etc.
+name: api
+# The "architecture" of the service you're running.
+type: Request-Driven Web Service
+
+image:
+  # Docker build arguments.
+  # For additional overrides: https://aws.github.io/copilot-cli/docs/manifest/rd-web-service/#image-build
+  build: Dockerfile
+  # Port exposed through your container to route traffic to it.
+  port: 5000
+
+# http:
+#   healthcheck:
+#     path: /
+#     healthy_threshold: 3
+#     unhealthy_threshold: 5
+#     interval: 10s
+#     timeout: 5s
+
+# Number of CPU units for the task.
+cpu: 1024
+# Amount of memory in MiB used by the task.
+memory: 2048
+
+# Connect your App Runner service to your environment's VPC.
+# network:
+#   vpc:
+#     placement: private
+
+
+# Enable tracing for the service.
+# observability:
+#   tracing: awsxray
+
+# Optional fields for more advanced use-cases.
+#
+variables:
+  # Environment variables for all environments
+  ENVIRONMENT: staging
+  AWS_REGION: us-east-1
+
+secrets:
+  DATABASE_URL: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/DATABASE_URL
+  AUTH0_CLIENT_ID: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/AUTH0_CLIENT_ID
+  AUTH0_CLIENT_SECRET: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/AUTH0_CLIENT_SECRET
+  AUTH0_DOMAIN: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/AUTH0_DOMAIN
+  AUTH0_CALLBACK_URL: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/AUTH0_CALLBACK_URL
+  APP_SECRET_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/APP_SECRET_KEY
+  OPENAI_API_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/OPENAI_API_KEY
+  OPENAI_ORG: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/OPENAI_ORG
+  TRANSLATION_API_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/TRANSLATION_API_KEY
+  AWS_ACCESS_KEY_ID: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/AWS_SECRET_ACCESS_KEY
+  S3_BUCKET_NAME: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/S3_BUCKET_NAME
+  DEFAULT_PORT: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/DEFAULT_PORT
+
+# You can override any of the values defined above by environment.
+environments:
+  staging:
+    variables:
+      ENVIRONMENT: staging
+      AWS_REGION: us-east-1
+  
+  production:
+    variables:
+      ENVIRONMENT: production
+      AWS_REGION: us-east-1  # Using N. Virginia region for all environments
+
+# The instance role is now defined in the addons/instance-role.yaml file
+# Custom instance role template approach

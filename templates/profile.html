@@ -47,6 +47,202 @@
     .input-field:focus {
         transform: scale(1.02);
     }
+
+    .avatar-container {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        position: relative;
+        margin: 0 auto 1rem auto;
+    }
+
+    .avatar-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .avatar-container:hover .avatar-overlay {
+        opacity: 1;
+    }
+
+    .pet-selector {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 1rem;
+        padding: 1rem 0;
+        margin-bottom: 2rem;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .pet-selector::-webkit-scrollbar {
+        display: none;
+    }
+
+    .pet-option {
+        flex: 0 0 auto;
+        width: 80px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .pet-option.active {
+        transform: scale(1.1);
+    }
+
+    .pet-option-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        overflow: hidden;
+        margin: 0 auto 0.5rem auto;
+        border: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .pet-option.active .pet-option-avatar {
+        border-color: #4299e1;
+    }
+
+    .pet-option-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .add-pet-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .add-pet-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+        border: 2px dashed #d1d5db;
+        font-size: 1.5rem;
+        color: #6b7280;
+        transition: all 0.2s ease;
+    }
+
+    .add-pet-option:hover .add-pet-circle {
+        background-color: #e5e7eb;
+        border-color: #9ca3af;
+    }
+
+    .step-indicator {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2rem;
+    }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        padding: 0 1.5rem;
+    }
+
+    .step-circle {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background-color: #e5e7eb;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .step.active .step-circle {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .step.completed .step-circle {
+        background-color: #10b981;
+        color: white;
+    }
+
+    .step-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+        text-align: center;
+    }
+
+    .step.active .step-text {
+        color: #3b82f6;
+        font-weight: 500;
+    }
+
+    .step.completed .step-text {
+        color: #10b981;
+        font-weight: 500;
+    }
+
+    .step-line {
+        position: absolute;
+        top: 1rem;
+        left: calc(50% + 1rem);
+        right: calc(50% - 1rem);
+        height: 2px;
+        background-color: #e5e7eb;
+        transform: translateY(-50%);
+    }
+
+    .step:last-child .step-line {
+        display: none;
+    }
+
+    .step.completed .step-line {
+        background-color: #10b981;
+    }
+
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+    }
+
+    .pulse {
+        animation: pulse 2s infinite;
+    }
 </style>
 
 <div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
@@ -56,162 +252,598 @@
                  alt="MyPetLink Logo" 
                  class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300">
         </a>
-        <a href="{{ url_for('profile') }}" class="text-gray-600 hover:text-gray-900 transition-colors duration-200">Pet Profile</a>
+        <div class="flex items-center space-x-4">
+            <a href="{{ url_for('profile') }}" 
+               class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center">
+                <span class="mr-1">🐾</span> Pet Profile
+            </a>
+            <a href="{{ url_for('logout') }}" 
+               class="text-red-500 hover:text-red-700 transition-colors duration-200">
+                Logout
+            </a>
+        </div>
     </div>
 </div>
 
 <div class="max-w-4xl mx-auto mt-20 px-4">
-    <div class="text-center mb-8">
+    <div class="text-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800">🐾 Pet Profile 🐾</h1>
-        <p class="text-gray-600 mt-2">Tell us about your furry (or scaly!) friend</p>
+        <p class="text-gray-600 mt-2">
+            {% if is_first_pet %}
+            Tell us about your furry (or scaly!) friend
+            {% else %}
+            Manage your pets' profiles and health information
+            {% endif %}
+        </p>
     </div>
     
-    <!-- Basic Info Card -->
-    <div class="pet-card rounded-2xl p-6 shadow-lg border-2 border-blue-100 mb-6 transform transition-transform hover:scale-[1.01]">
-        <div class="flex items-center mb-4">
-            <span class="text-2xl mr-2">🦮</span>
-            <h2 class="text-xl font-semibold text-blue-800">Who's This Cutie?</h2>
+    {% if not is_first_pet %}
+    <!-- Pet Selector -->
+    <div class="pet-selector">
+        {% for pet in pets %}
+        <div class="pet-option {% if pet.id == active_pet.id %}active{% endif %}" 
+             onclick="selectPet('{{ pet.id }}')">
+            <div class="pet-option-avatar">
+                <img src="{{ pet.avatar if pet.avatar and pet.avatar.startswith('/') else pet.avatar if pet.avatar else '/static/img/pet_logo.png' }}" 
+                     alt="{{ pet.name }}" onerror="this.src='/static/img/pet_logo.png'">
+            </div>
+            <div class="pet-option-name text-sm font-medium truncate">{{ pet.name }}</div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-2">
-                <label class="block text-gray-700 text-sm font-medium">Pet's Name</label>
-                <input type="text" id="petName" value="{{ pet.name if pet else '' }}" 
-                       class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors"
-                       placeholder="What's their name?">
+        {% endfor %}
+        <div class="pet-option add-pet-option" onclick="addNewPet()">
+            <div class="add-pet-circle">+</div>
+            <div class="text-sm text-gray-500">Add Pet</div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Pet Form -->
+    <div id="petForm">
+        {% if is_first_pet %}
+        <!-- Step Indicator (only for first pet) -->
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <div class="step-circle">1</div>
+                <div class="step-text">Basic Info</div>
+                <div class="step-line"></div>
             </div>
-            <div class="space-y-2">
-                <label class="block text-gray-700 text-sm font-medium">Species</label>
-                <select id="petType" 
-                        class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
-                    <option value="">What kind of pet are they?</option>
-                    <option value="dog">🐕 Dog</option>
-                    <option value="cat">🐱 Cat</option>
-                    <option value="bird">🦜 Bird</option>
-                    <option value="reptile">🦎 Reptile</option>
-                    <option value="fish">🐠 Fish</option>
-                    <option value="rabbit">🐰 Rabbit</option>
-                    <option value="ferret">🦦 Ferret</option>
-                    <option value="farm animal">🐮 Farm Animal</option>
-                </select>
+            <div class="step" id="step2">
+                <div class="step-circle">2</div>
+                <div class="step-text">Create Avatar</div>
+                <div class="step-line"></div>
             </div>
-            <div class="space-y-2">
-                <label class="block text-gray-700 text-sm font-medium">Breed</label>
-                <select id="breedSelect" 
-                        class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
-                    <option value="">Select species first</option>
-                </select>
+            <div class="step" id="step3">
+                <div class="step-circle">3</div>
+                <div class="step-text">Health Details</div>
             </div>
-            <div class="space-y-2">
-                <label class="block text-gray-700 text-sm font-medium">Age</label>
-                <div class="flex gap-4">
-                    <div class="flex-1">
-                        <input type="number" id="ageYears" placeholder="Years" min="0" max="30"
-                               class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
-                        <span class="text-sm text-gray-500">Years</span>
+        </div>
+        {% endif %}
+
+        <!-- Step 1: Basic Info -->
+        <div id="basicInfoStep" class="{% if not is_first_pet %}mb-6{% endif %}">
+            <div class="pet-card rounded-2xl p-6 shadow-lg border-2 border-blue-100 transform transition-transform hover:scale-[1.01]">
+                <div class="flex items-center mb-4">
+                    <span class="text-2xl mr-2">🦮</span>
+                    <h2 class="text-xl font-semibold text-blue-800">Who's This Cutie?</h2>
+                </div>
+                
+                <!-- Avatar Section -->
+                <div class="text-center mb-6">
+                    <div class="avatar-container" id="avatarContainer">
+                        <img id="petAvatar" src="{{ active_pet.avatar if active_pet.avatar and active_pet.avatar.startswith('/') else active_pet.avatar if active_pet.avatar else '/static/img/pet_logo.png' }}" 
+                             alt="Pet Avatar" onerror="this.src='/static/img/pet_logo.png'">
+                        <div class="avatar-overlay" onclick="openAvatarOptions()">
+                            <button class="bg-white text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                                Change
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex-1">
-                        <input type="number" id="ageMonths" placeholder="Months" min="0" max="11"
-                               class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
-                        <span class="text-sm text-gray-500">Months</span>
+                </div>
+                
+                <input type="hidden" id="petId" value="{{ active_pet.id if active_pet }}">
+                <input type="hidden" id="avatarUrl" value="{{ active_pet.avatar if active_pet.avatar }}">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="block text-gray-700 text-sm font-medium">Pet's Name</label>
+                        <input type="text" id="petName" value="{{ active_pet.name if active_pet }}" 
+                               class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors"
+                               placeholder="What's their name?">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-gray-700 text-sm font-medium">Species</label>
+                        <select id="petType" 
+                                class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors"
+                                onchange="loadBreeds()">
+                            <option value="">What kind of pet are they?</option>
+                            <option value="dog" {% if active_pet.species == 'dog' %}selected{% endif %}>🐕 Dog</option>
+                            <option value="cat" {% if active_pet.species == 'cat' %}selected{% endif %}>🐱 Cat</option>
+                            <option value="bird" {% if active_pet.species == 'bird' %}selected{% endif %}>🦜 Bird</option>
+                            <option value="reptile" {% if active_pet.species == 'reptile' %}selected{% endif %}>🦎 Reptile</option>
+                            <option value="fish" {% if active_pet.species == 'fish' %}selected{% endif %}>🐠 Fish</option>
+                            <option value="rabbit" {% if active_pet.species == 'rabbit' %}selected{% endif %}>🐰 Rabbit</option>
+                            <option value="ferret" {% if active_pet.species == 'ferret' %}selected{% endif %}>🦦 Ferret</option>
+                            <option value="farm animal" {% if active_pet.species == 'farm animal' %}selected{% endif %}>🐮 Farm Animal</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-gray-700 text-sm font-medium">Breed</label>
+                        <select id="breedSelect" 
+                                class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
+                            <option value="">Select species first</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-gray-700 text-sm font-medium">Age</label>
+                        <div class="flex gap-4">
+                            <div class="flex-1">
+                                <input type="number" id="ageYears" placeholder="Years" min="0" max="30"
+                                       value="{{ active_pet.age.years if active_pet.age }}"
+                                       class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
+                                <span class="text-sm text-gray-500">Years</span>
+                            </div>
+                            <div class="flex-1">
+                                <input type="number" id="ageMonths" placeholder="Months" min="0" max="11"
+                                       value="{{ active_pet.age.months if active_pet.age }}"
+                                       class="w-full px-4 py-2 rounded-xl border-2 border-blue-100 focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-colors">
+                                <span class="text-sm text-gray-500">Months</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if is_first_pet %}
+                <div class="flex justify-end mt-6">
+                    <button onclick="nextStep(1)" 
+                            class="save-button text-white px-8 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-600 pulse">
+                        Next: Create Avatar
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Step 2: Avatar Creation (Only visible in first-pet onboarding) -->
+        <div id="avatarStep" class="{% if is_first_pet %}hidden{% endif %} mb-6">
+            <div class="pet-card rounded-2xl p-6 shadow-lg border-2 border-blue-100 transform transition-transform hover:scale-[1.01]">
+                <div class="flex items-center mb-4">
+                    <span class="text-2xl mr-2">🖼️</span>
+                    <h2 class="text-xl font-semibold text-blue-800">Create a Pet Avatar</h2>
+                </div>
+                
+                <div class="text-center mb-6">
+                    <div class="avatar-container mx-auto mb-6" style="width: 200px; height: 200px;">
+                        <img id="avatarPreview" src="{{ active_pet.avatar if active_pet.avatar and active_pet.avatar.startswith('/') else active_pet.avatar if active_pet.avatar else '/static/img/pet_logo.png' }}" 
+                             alt="Pet Avatar" onerror="this.src='/static/img/pet_logo.png'">
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <button onclick="generateAvatar()" 
+                                class="bg-purple-600 text-white px-6 py-3 rounded-full hover:bg-purple-700 transform transition-all hover:scale-105 shadow-md mx-2">
+                            🪄 Generate with AI
+                        </button>
+                        
+                        <button onclick="uploadAvatar()" 
+                                class="bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transform transition-all hover:scale-105 shadow-md mx-2">
+                            📤 Upload Photo
+                        </button>
+                        
+                        <input type="file" id="avatarUpload" class="hidden" accept="image/*">
+                    </div>
+                </div>
+                
+                {% if is_first_pet %}
+                <div class="flex justify-between mt-6">
+                    <button onclick="prevStep(2)" 
+                            class="bg-gray-300 text-gray-800 px-6 py-2 rounded-full hover:bg-gray-400 transition-all">
+                        Back
+                    </button>
+                    <button onclick="nextStep(2)" 
+                            class="save-button text-white px-8 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-600 pulse">
+                        Next: Health Details
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Step 3: Health Details -->
+        <div id="healthStep" class="{% if is_first_pet %}hidden{% endif %} mb-6">
+            <div class="health-card rounded-2xl p-6 shadow-lg border-2 border-green-100 transform transition-transform hover:scale-[1.01]">
+                <div class="flex items-center mb-4">
+                    <span class="text-2xl mr-2">💚</span>
+                    <h2 class="text-xl font-semibold text-green-800">Health Details</h2>
+                </div>
+                <div class="space-y-6">
+                    <div class="space-y-2">
+                        <label class="block text-gray-700 text-sm font-medium">Weight (lbs)</label>
+                        <input type="number" id="weight" step="0.1" min="0"
+                               value="{{ active_pet.weight if active_pet }}"
+                               class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors"
+                               placeholder="How much do they weigh?">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-gray-700 text-sm font-medium">Health Notes</label>
+                        <textarea id="healthConditions" rows="3"
+                                 class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors"
+                                 placeholder="Any ongoing health conditions or special care needs?">{{ active_pet.health_conditions if active_pet }}</textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-gray-700 text-sm font-medium">Last Vet Visit</label>
+                        <input type="date" id="lastCheckup"
+                               value="{{ active_pet.last_checkup if active_pet }}"
+                               class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors">
+                    </div>
+                </div>
+                
+                {% if is_first_pet %}
+                <div class="flex justify-between mt-6">
+                    <button onclick="prevStep(3)" 
+                            class="bg-gray-300 text-gray-800 px-6 py-2 rounded-full hover:bg-gray-400 transition-all">
+                        Back
+                    </button>
+                    <button onclick="saveProfile()" 
+                            class="save-button text-white px-8 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-600 pulse">
+                        Complete Profile
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Location Section -->
+        <div id="locationStep" class="{% if is_first_pet %}hidden{% endif %} mb-6">
+            <div class="location-card rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4 text-purple-800 flex items-center">
+                    <span class="text-2xl mr-2">📍</span> Location
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">State</label>
+                        <select id="state" name="state" class="input-field w-full p-2 border rounded-lg">
+                            <option value="">Select State</option>
+                            <option value="AL" {% if active_pet.state == 'AL' %}selected{% endif %}>Alabama</option>
+                            <option value="AK" {% if active_pet.state == 'AK' %}selected{% endif %}>Alaska</option>
+                            <option value="AZ" {% if active_pet.state == 'AZ' %}selected{% endif %}>Arizona</option>
+                            <option value="CA" {% if active_pet.state == 'CA' %}selected{% endif %}>California</option>
+                            <!-- Add all states -->
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">City</label>
+                        <select id="city" name="city" class="input-field w-full p-2 border rounded-lg">
+                            <option value="">Select City</option>
+                            <!-- Cities will be populated based on state selection -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Nearby Vets Section -->
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium mb-4 text-purple-700">Veterinary Clinic Information</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Clinic Name</label>
+                            <input type="text" id="vetClinic" 
+                                   value="{{ active_pet.vet_clinic if active_pet and active_pet.vet_clinic }}"
+                                   class="w-full px-4 py-2 rounded-xl border-2 border-purple-100 focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-colors"
+                                   placeholder="Your pet's veterinary clinic">
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Clinic Phone</label>
+                            <input type="tel" id="vetPhone" 
+                                   value="{{ active_pet.vet_phone if active_pet and active_pet.vet_phone }}"
+                                   class="w-full px-4 py-2 rounded-xl border-2 border-purple-100 focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-colors"
+                                   placeholder="Phone number for the clinic">
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Clinic Address</label>
+                            <input type="text" id="vetAddress" 
+                                   value="{{ active_pet.vet_address if active_pet and active_pet.vet_address }}"
+                                   class="w-full px-4 py-2 rounded-xl border-2 border-purple-100 focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-colors"
+                                   placeholder="Street address for the clinic">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h4 class="text-md font-medium mb-4 text-purple-700">Find Nearby Clinics</h4>
+                        <div id="nearby-vets" class="space-y-4">
+                            <!-- Vets will be populated here -->
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Health Info Card -->
-    <div class="health-card rounded-2xl p-6 shadow-lg border-2 border-green-100 mb-6 transform transition-transform hover:scale-[1.01]">
-        <div class="flex items-center mb-4">
-            <span class="text-2xl mr-2">💚</span>
-            <h2 class="text-xl font-semibold text-green-800">Health Details</h2>
+        <!-- Save Button (not shown in first-pet onboarding) -->
+        {% if not is_first_pet %}
+        <div class="text-center mb-8">
+            <button onclick="saveProfile()" 
+                    class="save-button text-white px-8 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-600">
+                🐾 Save Profile
+            </button>
         </div>
-        <div class="space-y-6">
-            <div class="space-y-2">
-                <label class="block text-gray-700 text-sm font-medium">Weight (lbs)</label>
-                <input type="number" id="weight" step="0.1" min="0"
-                       class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors"
-                       placeholder="How much do they weigh?">
-            </div>
-            <div class="space-y-2">
-                <label class="block text-gray-700 text-sm font-medium">Health Notes</label>
-                <textarea id="healthConditions" rows="3"
-                         class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors"
-                         placeholder="Any ongoing health conditions or special care needs?"></textarea>
-            </div>
-            <div class="space-y-2">
-                <label class="block text-gray-700 text-sm font-medium">Last Vet Visit</label>
-                <input type="date" id="lastCheckup"
-                       class="w-full px-4 py-2 rounded-xl border-2 border-green-100 focus:border-green-300 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition-colors">
-            </div>
-        </div>
+        {% endif %}
     </div>
+</div>
 
-    <!-- Location Section -->
-    <div class="location-card rounded-xl shadow-lg p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4 text-purple-800 flex items-center">
-            <span class="text-2xl mr-2">📍</span> Location
-        </h2>
+<!-- Avatar Options Modal -->
+<div id="avatarModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 space-y-6">
+        <h3 class="text-xl font-semibold text-center">Choose Avatar Option</h3>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">State</label>
-                <select id="state" name="state" class="input-field w-full p-2 border rounded-lg">
-                    <option value="">Select State</option>
-                    <option value="AL">Alabama</option>
-                    <option value="AK">Alaska</option>
-                    <option value="AZ">Arizona</option>
-                    <option value="CA">California</option>
-                    <!-- Add all states -->
-                </select>
-            </div>
+        <div class="flex flex-col space-y-4">
+            <button onclick="generateAvatar()" 
+                    class="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transform transition-all hover:scale-105">
+                🪄 Generate with AI
+            </button>
             
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">City</label>
-                <select id="city" name="city" class="input-field w-full p-2 border rounded-lg">
-                    <option value="">Select City</option>
-                    <!-- Cities will be populated based on state selection -->
-                </select>
-            </div>
+            <button onclick="uploadAvatar()" 
+                    class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transform transition-all hover:scale-105">
+                📤 Upload Photo
+            </button>
         </div>
-
-        <!-- Nearby Vets Section -->
-        <div class="mt-6">
-            <h3 class="text-lg font-medium mb-4 text-purple-700">Nearby Veterinary Clinics</h3>
-            <div id="nearby-vets" class="space-y-4">
-                <!-- Vets will be populated here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Save Button -->
-    <div class="text-center mb-8">
-        <button onclick="saveProfile()" 
-                class="save-button text-white px-8 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-600">
-            🐾 Save Profile
+        
+        <button onclick="closeAvatarModal()" 
+                class="w-full border border-gray-300 text-gray-600 px-6 py-3 rounded-xl hover:bg-gray-100">
+            Cancel
         </button>
     </div>
 </div>
 
+<!-- Loading Indicator -->
+<div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-xl shadow-lg text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+        <p class="text-lg font-medium text-gray-800" id="loadingText">Generating avatar...</p>
+    </div>
+</div>
+
 <script>
-// Add breed population based on species selection
-document.getElementById('petType').addEventListener('change', function() {
-    const petType = this.value;
+let currentStep = 1;
+let currentPetId = "{{ active_pet.id if active_pet else '' }}";
+let isFirstPet = {% if is_first_pet %}true{% else %}false{% endif %};
+
+// Initial setup
+document.addEventListener('DOMContentLoaded', function() {
+    // If species is already selected, load the breeds
+    const speciesSelect = document.getElementById('petType');
+    if (speciesSelect.value) {
+        loadBreeds(true);
+    }
+});
+
+function nextStep(step) {
+    // Validate current step
+    if (step === 1) {
+        const petName = document.getElementById('petName').value;
+        const species = document.getElementById('petType').value;
+        
+        if (!petName) {
+            alert('Please enter your pet\'s name');
+            return;
+        }
+        
+        if (!species) {
+            alert('Please select your pet\'s species');
+            return;
+        }
+        
+        // Generate avatar based on current info
+        if (!document.getElementById('avatarUrl').value) {
+            const generateBtn = document.getElementById('generateBtn');
+            if (generateBtn) generateBtn.click();
+        }
+    }
+    
+    // Hide current step
+    document.getElementById(`step${step}`).classList.remove('active');
+    document.getElementById(`step${step}`).classList.add('completed');
+    
+    if (step === 1) {
+        document.getElementById('basicInfoStep').classList.add('hidden');
+        document.getElementById('avatarStep').classList.remove('hidden');
+    } else if (step === 2) {
+        document.getElementById('avatarStep').classList.add('hidden');
+        document.getElementById('healthStep').classList.remove('hidden');
+    }
+    
+    // Show next step
+    document.getElementById(`step${step + 1}`).classList.add('active');
+    currentStep = step + 1;
+}
+
+function prevStep(step) {
+    // Hide current step
+    document.getElementById(`step${step}`).classList.remove('active');
+    
+    // Show previous step
+    document.getElementById(`step${step - 1}`).classList.add('active');
+    document.getElementById(`step${step - 1}`).classList.remove('completed');
+    
+    if (step === 2) {
+        document.getElementById('avatarStep').classList.add('hidden');
+        document.getElementById('basicInfoStep').classList.remove('hidden');
+    } else if (step === 3) {
+        document.getElementById('healthStep').classList.add('hidden');
+        document.getElementById('avatarStep').classList.remove('hidden');
+    }
+    
+    currentStep = step - 1;
+}
+
+function loadBreeds(keepExistingSelection = false) {
+    const petType = document.getElementById('petType').value;
     if (!petType) return;
+    
+    const currentBreed = keepExistingSelection ? 
+        document.getElementById('breedSelect').value : '';
     
     fetch(`/api/breeds/${petType}`)
         .then(response => response.json())
         .then(breeds => {
             const breedSelect = document.getElementById('breedSelect');
             breedSelect.innerHTML = '<option value="">Select breed</option>' +
-                breeds.map(breed => `<option value="${breed}">${breed}</option>`).join('');
+                breeds.map(breed => {
+                    const selected = breed === "{{ active_pet.breed if active_pet else '' }}" || breed === currentBreed ? 'selected' : '';
+                    return `<option value="${breed}" ${selected}>${breed}</option>`;
+                }).join('');
         })
         .catch(error => console.error('Error loading breeds:', error));
+}
+
+function openAvatarOptions() {
+    document.getElementById('avatarModal').classList.remove('hidden');
+}
+
+function closeAvatarModal() {
+    document.getElementById('avatarModal').classList.add('hidden');
+}
+
+function uploadAvatar() {
+    closeAvatarModal();
+    document.getElementById('avatarUpload').click();
+}
+
+document.getElementById('avatarUpload').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            document.getElementById('petAvatar').src = e.target.result;
+            document.getElementById('avatarPreview').src = e.target.result;
+            document.getElementById('avatarUrl').value = e.target.result;
+        }
+        
+        reader.readAsDataURL(e.target.files[0]);
+    }
 });
 
+function generateAvatar() {
+    closeAvatarModal();
+    
+    const petName = document.getElementById('petName').value;
+    const species = document.getElementById('petType').value;
+    const breed = document.getElementById('breedSelect').value;
+    
+    if (!petName || !species) {
+        alert('Please enter your pet\'s name and species first');
+        return;
+    }
+    
+    // Show loading indicator
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    document.getElementById('loadingText').textContent = 'Generating avatar...';
+    
+    // Call API to generate avatar
+    fetch('/generate_pet_avatar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            pet_name: petName,
+            species: species,
+            breed: breed
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('petAvatar').src = data.avatar_url;
+            document.getElementById('avatarPreview').src = data.avatar_url;
+            document.getElementById('avatarUrl').value = data.avatar_url;
+        } else {
+            alert(data.error || 'Failed to generate avatar');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to generate avatar. Please try again.');
+    })
+    .finally(() => {
+        // Hide loading indicator
+        document.getElementById('loadingOverlay').classList.add('hidden');
+    });
+}
+
+function selectPet(petId) {
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    document.getElementById('loadingText').textContent = 'Loading pet profile...';
+    
+    fetch(`/set_active_pet/${petId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Failed to select pet');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('loadingOverlay').classList.add('hidden');
+    });
+}
+
+function addNewPet() {
+    currentPetId = '';
+    document.getElementById('petName').value = '';
+    document.getElementById('petType').value = '';
+    document.getElementById('breedSelect').innerHTML = '<option value="">Select species first</option>';
+    document.getElementById('ageYears').value = '';
+    document.getElementById('ageMonths').value = '';
+    document.getElementById('weight').value = '';
+    document.getElementById('healthConditions').value = '';
+    document.getElementById('lastCheckup').value = '';
+    document.getElementById('state').value = '';
+    document.getElementById('city').value = '';
+    document.getElementById('petAvatar').src = '/static/img/pet_logo.png';
+    document.getElementById('avatarPreview').src = '/static/img/pet_logo.png';
+    document.getElementById('avatarUrl').value = '';
+    document.getElementById('petId').value = '';
+    
+    // Clear vet clinic info if the elements exist
+    if (document.getElementById('vetClinic')) document.getElementById('vetClinic').value = '';
+    if (document.getElementById('vetPhone')) document.getElementById('vetPhone').value = '';
+    if (document.getElementById('vetAddress')) document.getElementById('vetAddress').value = '';
+    
+    // Update the UI to show pets are now being edited
+    const petOptions = document.querySelectorAll('.pet-option');
+    petOptions.forEach(option => {
+        option.classList.remove('active');
+    });
+}
+
 function saveProfile() {
+    const petName = document.getElementById('petName').value;
+    const species = document.getElementById('petType').value;
+    
+    if (!petName) {
+        alert('Please enter your pet\'s name');
+        return;
+    }
+    
+    if (!species) {
+        alert('Please select your pet\'s species');
+        return;
+    }
+    
+    // Show loading indicator
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    document.getElementById('loadingText').textContent = 'Saving pet profile...';
+    
     const data = {
-        pet_name: document.getElementById('petName').value,
-        species: document.getElementById('petType').value,
+        pet_id: document.getElementById('petId').value,
+        pet_name: petName,
+        species: species,
         breed: document.getElementById('breedSelect').value,
         age: {
             years: document.getElementById('ageYears').value,
@@ -221,7 +853,11 @@ function saveProfile() {
         health_conditions: document.getElementById('healthConditions').value,
         last_checkup: document.getElementById('lastCheckup').value,
         state: document.getElementById('state').value,
-        city: document.getElementById('city').value
+        city: document.getElementById('city').value,
+        avatar: document.getElementById('avatarUrl').value,
+        vet_clinic: document.getElementById('vetClinic') ? document.getElementById('vetClinic').value : '',
+        vet_phone: document.getElementById('vetPhone') ? document.getElementById('vetPhone').value : '',
+        vet_address: document.getElementById('vetAddress') ? document.getElementById('vetAddress').value : ''
     };
 
     fetch('/update_pet_profile', {
@@ -234,8 +870,11 @@ function saveProfile() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Profile saved successfully!');
-            window.location.href = '/';
+            if (isFirstPet || data.is_first_pet) {
+                window.location.href = '/';
+            } else {
+                window.location.reload();
+            }
         } else {
             throw new Error(data.error || 'Failed to save profile');
         }
@@ -243,6 +882,7 @@ function saveProfile() {
     .catch(error => {
         console.error('Error:', error);
         alert('Failed to save profile. Please try again.');
+        document.getElementById('loadingOverlay').classList.add('hidden');
     });
 }
 </script>

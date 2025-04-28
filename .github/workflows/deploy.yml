@@ -1,0 +1,150 @@
+name: Deploy to AWS App Runner
+
+on:
+  push:
+    branches:
+      - main      # Deploy to production when pushing to main
+      - develop   # Deploy to staging when pushing to develop
+    paths-ignore:
+      - '**.md'   # Skip readme changes
+      - '.gitignore'
+  workflow_dispatch:  # Allow manual triggers
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  COPILOT_APPLICATION: mypetlink
+  COPILOT_SERVICE: api
+  AWS_REGION: us-east-1  # Using us-east-1 for all environments
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
+        
+      - name: Set environment based on branch or input
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "ENVIRONMENT=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+            echo "Deployment triggered manually to ${{ github.event.inputs.environment }} environment"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENVIRONMENT=production" >> $GITHUB_ENV
+            echo "Deployment triggered by push to main branch - deploying to production"
+          else
+            echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+            echo "Deployment triggered by push to develop branch - deploying to staging"
+          fi
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Set up Docker layer caching
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install AWS Copilot CLI
+        run: |
+          mkdir -p /tmp/copilot-download
+          curl -Lo /tmp/copilot-download/copilot-cli https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+          chmod +x /tmp/copilot-download/copilot-cli
+          sudo mv /tmp/copilot-download/copilot-cli /usr/local/bin/copilot
+          copilot --version
+      
+      - name: Deploy with AWS Copilot
+        id: deploy
+        run: |
+          echo "Starting deployment to ${{ env.ENVIRONMENT }} environment"
+          
+          # Set build timestamp for versioning
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          COMMIT_HASH=${GITHUB_SHA::8}
+          BUILD_TAG="${TIMESTAMP}-${COMMIT_HASH}"
+          echo "BUILD_TAG=${BUILD_TAG}" >> $GITHUB_ENV
+          
+          # Display version information
+          echo "Version: ${BUILD_TAG}"
+          echo "Commit: ${GITHUB_SHA}"
+          echo "Branch: ${GITHUB_REF_NAME}"
+          
+          # Verify app is initialized
+          echo "Verifying Copilot app exists..."
+          if ! copilot app ls | grep -q "${{ env.COPILOT_APPLICATION }}"; then
+            echo "Error: Application ${{ env.COPILOT_APPLICATION }} not found"
+            echo "status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Verify environment exists
+          echo "Verifying environment exists..."
+          if ! copilot env ls --app ${{ env.COPILOT_APPLICATION }} | grep -q "${{ env.ENVIRONMENT }}"; then
+            echo "Error: Environment ${{ env.ENVIRONMENT }} not found"
+            echo "status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Deploy the service to the environment with timeout and retry logic
+          MAX_ATTEMPTS=2
+          ATTEMPT=1
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Deployment attempt $ATTEMPT of $MAX_ATTEMPTS"
+            
+            if copilot svc deploy \
+              --app ${{ env.COPILOT_APPLICATION }} \
+              --name ${{ env.COPILOT_SERVICE }} \
+              --env ${{ env.ENVIRONMENT }}; then
+              
+              echo "Deployment successful!"
+              echo "status=success" >> $GITHUB_OUTPUT
+              break
+            else
+              DEPLOY_EXIT_CODE=$?
+              echo "Deployment attempt $ATTEMPT failed with exit code $DEPLOY_EXIT_CODE"
+              
+              if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                echo "All deployment attempts failed"
+                echo "status=failure" >> $GITHUB_OUTPUT
+                exit $DEPLOY_EXIT_CODE
+              else
+                echo "Retrying deployment in 30 seconds..."
+                sleep 30
+                ATTEMPT=$((ATTEMPT + 1))
+              fi
+            fi
+          done
+      
+      - name: Send deployment notification
+        if: always()
+        run: |
+          DEPLOY_STATUS="${{ steps.deploy.outputs.status }}"
+          if [ "$DEPLOY_STATUS" == "success" ]; then
+            echo "🚀 Deployment to ${{ env.ENVIRONMENT }} environment completed successfully!"
+            echo "Build: ${BUILD_TAG}"
+            echo "Service URL can be found by running: copilot svc show --app ${{ env.COPILOT_APPLICATION }} --name ${{ env.COPILOT_SERVICE }} --env ${{ env.ENVIRONMENT }}"
+          else
+            echo "❌ Deployment to ${{ env.ENVIRONMENT }} environment failed!"
+            echo "Please check the logs for more details."
+          fi
