@@ -1508,51 +1508,159 @@ def analyze_poop():
 
 @app.route('/api/breeds/<pet_type>')
 def get_breeds(pet_type):
-    # Add your breed lists here
+    # Comprehensive breed lists organized alphabetically
     breeds = {
-        'dog': [
-            'Labrador Retriever', 'German Shepherd', 'Golden Retriever', 'French Bulldog', 'Bulldog',
-            'Poodle', 'Yorkshire Terrier', 'Boxer', 'Dachshund', 'Siberian Husky',
-            'Great Dane', 'Doberman Pinscher', 'Australian Shepherd', 'Shih Tzu', 'Chihuahua',
-            'Rottweiler', 'Cocker Spaniel', 'Boston Terrier', 'Miniature Schnauzer', 'Cavalier King Charles Spaniel',
-            'Basset Hound', 'Border Collie', 'Akita', 'Maltese', 'Bernese Mountain Dog',
-            'Newfoundland', 'Weimaraner', 'English Springer Spaniel', 'Papillon', 'St. Bernard',
-            'West Highland White Terrier', 'Rhodesian Ridgeback', 'Pomeranian', 'Alaskan Malamute', 'Whippet'
-        ],
-        'cat': [
-            'Persian', 'Maine Coon', 'Siamese', 'British Shorthair', 'Ragdoll',
-            'Sphynx', 'Bengal', 'Scottish Fold', 'Abyssinian', 'Russian Blue',
-            'Norwegian Forest Cat', 'Savannah', 'Turkish Angora', 'Birman', 'Oriental Shorthair',
-            'American Shorthair', 'Tonkinese', 'Himalayan', 'Chartreux', 'Devon Rex'
-        ],
-        'bird': [
-            'Parakeet', 'Cockatiel', 'Canary', 'Cockatoo', 'African Grey',
-            'Macaw', 'Lovebird', 'Budgerigar', 'Finch', 'Eclectus Parrot',
-            'Amazon Parrot', 'Conure', 'Quaker Parrot', 'Lorikeet', 'Parrotlet',
-            'Indian Ringneck', 'Pionus Parrot', 'Green Cheek Conure', "Bourke's Parrot", 'Senegal Parrot'
-        ],
-        'reptile': [
-            'Bearded Dragon', 'Ball Python', 'Leopard Gecko', 'Corn Snake', 'Green Iguana',
-            'Red-Eared Slider', 'Crested Gecko', 'Blue-Tongue Skink', 'King Snake', 'Chameleon',
-            'Uromastyx', 'Tokay Gecko', 'Milk Snake', 'Tegu', 'Savannah Monitor',
-            'Boa Constrictor', 'Chinese Water Dragon', 'Anole', 'Garter Snake', 'Sulcata Tortoise'
-        ],
-        'fish': [
-            'Betta', 'Goldfish', 'Angelfish', 'Guppy', 'Neon Tetra',
-            'Oscar', 'Koi', 'Discus', 'Molly', 'Platy',
-            'Swordtail', 'Clownfish', 'Zebra Danio', 'Plecostomus', 'Cichlid'
-        ],
-        'rabbit': [
-            'Holland Lop', 'Netherland Dwarf', 'Flemish Giant', 'Mini Rex', 'Lionhead',
-            'English Lop', 'American Fuzzy Lop', 'Harlequin', 'English Angora', 'Silver Marten'
-        ],
-        'ferret': [
-            'Standard Ferret', 'Albino Ferret', 'Black Sable Ferret', 'Champagne Ferret', 'Cinnamon Ferret'
-        ],
-        'farm animal': [
-            'Goat', 'Sheep', 'Pig', 'Cow', 'Horse',
-            'Donkey', 'Alpaca', 'Llama', 'Chicken', 'Duck'
-        ]
+        'dog': sorted([
+            'Affenpinscher', 'Afghan Hound', 'Airedale Terrier', 'Akita', 'Alaskan Malamute',
+            'American Bulldog', 'American Eskimo Dog', 'American Pit Bull Terrier', 'American Staffordshire Terrier',
+            'Australian Cattle Dog', 'Australian Shepherd', 'Australian Terrier',
+            'Basenji', 'Basset Hound', 'Beagle', 'Bearded Collie', 'Belgian Malinois',
+            'Bernese Mountain Dog', 'Bichon Frise', 'Bloodhound', 'Border Collie', 'Border Terrier',
+            'Boston Terrier', 'Boxer', 'Boykin Spaniel', 'Brittany', 'Brussels Griffon', 'Bull Terrier',
+            'Bulldog', 'Bullmastiff',
+            'Cairn Terrier', 'Cane Corso', 'Cavalier King Charles Spaniel', 'Chesapeake Bay Retriever',
+            'Chihuahua', 'Chinese Crested', 'Chinese Shar-Pei', 'Chow Chow', 'Cocker Spaniel', 'Collie',
+            'Corgi (Cardigan)', 'Corgi (Pembroke)', 'Dachshund', 'Dalmatian', 'Doberman Pinscher',
+            'English Bulldog', 'English Setter', 'English Springer Spaniel',
+            'French Bulldog',
+            'German Shepherd', 'German Shorthaired Pointer', 'Giant Schnauzer', 'Golden Retriever',
+            'Gordon Setter', 'Great Dane', 'Great Pyrenees', 'Greater Swiss Mountain Dog', 'Greyhound',
+            'Havanese', 'Irish Setter', 'Irish Wolfhound', 'Italian Greyhound',
+            'Jack Russell Terrier', 'Japanese Chin', 'Japanese Spitz',
+            'Keeshond', 'Kerry Blue Terrier', 'Komondor', 'Kuvasz',
+            'Labrador Retriever', 'Leonberger', 'Lhasa Apso',
+            'Maltese', 'Mastiff', 'Miniature Pinscher', 'Miniature Schnauzer',
+            'Newfoundland', 'Norfolk Terrier', 'Norwegian Elkhound', 'Norwich Terrier',
+            'Old English Sheepdog', 'Papillon', 'Pekingese', 'Pharaoh Hound',
+            'Pointer', 'Pomeranian', 'Poodle (Standard)', 'Poodle (Miniature)', 'Poodle (Toy)',
+            'Portuguese Water Dog', 'Pug',
+            'Rat Terrier', 'Rhodesian Ridgeback', 'Rottweiler',
+            'Saint Bernard', 'Saluki', 'Samoyed', 'Schipperke', 'Scottish Terrier',
+            'Shetland Sheepdog', 'Shiba Inu', 'Shih Tzu', 'Siberian Husky',
+            'Silky Terrier', 'Smooth Fox Terrier', 'Soft Coated Wheaten Terrier',
+            'Staffordshire Bull Terrier',
+            'Standard Schnauzer',
+            'Tibetan Mastiff', 'Tibetan Spaniel', 'Tibetan Terrier',
+            'Toy Fox Terrier',
+            'Vizsla',
+            'Weimaraner', 'Welsh Springer Spaniel', 'West Highland White Terrier',
+            'Whippet',
+            'Wire Fox Terrier',
+            'Yorkshire Terrier'
+        ]),
+        'cat': sorted([
+            'Abyssinian', 'American Bobtail', 'American Curl', 'American Shorthair', 'American Wirehair',
+            'Balinese', 'Bengal', 'Birman', 'Bombay', 'British Longhair', 'British Shorthair', 'Burmese',
+            'Chartreux', 'Chausie', 'Cornish Rex', 'Cyprus',
+            'Devon Rex', 'Egyptian Mau', 'European Shorthair', 'Exotic Shorthair',
+            'Havana Brown', 'Himalayan',
+            'Japanese Bobtail',
+            'Korat',
+            'LaPerm', 'Maine Coon', 'Manx', 'Munchkin',
+            'Norwegian Forest Cat',
+            'Ocicat', 'Oriental Longhair', 'Oriental Shorthair',
+            'Persian',
+            'Ragamuffin', 'Ragdoll', 'Russian Blue',
+            'Savannah', 'Scottish Fold', 'Selkirk Rex', 'Siamese', 'Siberian', 'Singapura',
+            'Snowshoe', 'Somali', 'Sphynx',
+            'Thai', 'Tonkinese', 'Turkish Angora', 'Turkish Van'
+        ]),
+        'bird': sorted([
+            'African Grey Parrot', 'Amazon Parrot', 'Australian King Parrot',
+            'Budgerigar (Budgie)',
+            'Caique', 'Canary', 'Cockatiel', 'Cockatoo (Umbrella)', 'Cockatoo (Sulfur-crested)',
+            'Conure (Green Cheek)', 'Conure (Sun)', 'Conure (Blue-crowned)',
+            'Diamond Dove',
+            'Eclectus Parrot',
+            'Finch (Zebra)', 'Finch (Society)', 'Finch (Gouldian)',
+            'Indian Ringneck Parakeet',
+            'Lovebird (Peach-faced)', 'Lovebird (Fischer\'s)', 'Lovebird (Masked)',
+            'Macaw (Blue and Gold)', 'Macaw (Scarlet)', 'Macaw (Green-winged)', 'Macaw (Hyacinth)',
+            'Meyer\'s Parrot',
+            'Pacific Parrotlet',
+            'Pionus Parrot',
+            'Quaker Parrot',
+            'Rainbow Lorikeet', 'Red-factor Canary',
+            'Senegal Parrot',
+            'White-capped Pionus',
+            'Yellow-naped Amazon'
+        ]),
+        'reptile': sorted([
+            'African Fat-tailed Gecko', 'African Spurred Tortoise',
+            'Ball Python', 'Bearded Dragon', 'Blue-tongued Skink', 'Boa Constrictor',
+            'California Kingsnake', 'Carpet Python', 'Chameleon (Veiled)', 'Chameleon (Panther)',
+            'Corn Snake', 'Crested Gecko',
+            'Eastern Box Turtle', 'Emerald Tree Boa',
+            'Fire Skink',
+            'Garter Snake', 'Gecko (Mediterranean)', 'Green Anole', 'Green Iguana',
+            'Hermann\'s Tortoise',
+            'Jackson\'s Chameleon',
+            'Kenyan Sand Boa', 'King Snake',
+            'Leopard Gecko', 'Leopard Tortoise',
+            'Mali Uromastyx',
+            'Painted Turtle',
+            'Red-eared Slider', 'Red-footed Tortoise', 'Rosy Boa', 'Russian Tortoise',
+            'Savannah Monitor',
+            'Tegu (Argentine Black and White)', 'Tokay Gecko',
+            'Water Dragon', 'Western Hognose Snake'
+        ]),
+        'fish': sorted([
+            'Angelfish', 'Arowana',
+            'Barb (Tiger)', 'Betta', 'Black Moor Goldfish', 'Black Skirt Tetra', 'Blue Gourami',
+            'Cardinal Tetra', 'Clownfish', 'Corydoras Catfish',
+            'Danio (Zebra)', 'Discus', 'Dwarf Gourami',
+            'Fancy Guppy', 'Firemouth Cichlid',
+            'German Blue Ram', 'Goldfish',
+            'Harlequin Rasbora',
+            'Jack Dempsey Cichlid',
+            'Killifish', 'Koi',
+            'Lionfish',
+            'Molly (Black)', 'Molly (Sailfin)',
+            'Neon Tetra',
+            'Oscar',
+            'Platy', 'Plecostomus',
+            'Rainbow Shark', 'Rainbowfish',
+            'Siamese Algae Eater', 'Silver Dollar', 'Swordtail',
+            'Tiger Barb',
+            'White Cloud Mountain Minnow'
+        ]),
+        'rabbit': sorted([
+            'American Fuzzy Lop', 'American Sable',
+            'Belgian Hare', 'Beveren',
+            'Californian',
+            'Dutch',
+            'English Angora', 'English Lop', 'English Spot',
+            'Flemish Giant', 'Florida White', 'French Angora', 'French Lop',
+            'Giant Angora', 'Giant Chinchilla',
+            'Harlequin', 'Havana', 'Holland Lop', 'Hotot',
+            'Jersey Wooly',
+            'Lilac',
+            'Mini Lop', 'Mini Rex', 'Mini Satin',
+            'Netherland Dwarf', 'New Zealand',
+            'Polish',
+            'Rex',
+            'Satin', 'Silver Fox', 'Silver Marten',
+            'Standard Chinchilla',
+            'Tan', 'Thrianta'
+        ]),
+        'ferret': sorted([
+            'Albino', 'Black', 'Black Sable', 'Champagne',
+            'Chocolate', 'Cinnamon', 'Dark-Eyed White',
+            'Panda', 'Point', 'Sable',
+            'Silver', 'Standard (Sable)', 'White'
+        ]),
+        'farm animal': sorted([
+            'Alpaca',
+            'Chicken (Ameraucana)', 'Chicken (Australorp)', 'Chicken (Brahma)', 'Chicken (Leghorn)', 'Chicken (Orpington)', 'Chicken (Plymouth Rock)', 'Chicken (Rhode Island Red)', 'Chicken (Silkie)', 'Chicken (Sussex)', 'Chicken (Wyandotte)',
+            'Cow (Angus)', 'Cow (Holstein)', 'Cow (Jersey)',
+            'Donkey',
+            'Duck (Pekin)', 'Duck (Rouen)', 'Duck (Runner)',
+            'Goat (Alpine)', 'Goat (Boer)', 'Goat (LaMancha)', 'Goat (Nigerian Dwarf)', 'Goat (Nubian)',
+            'Horse (American Quarter)', 'Horse (Arabian)', 'Horse (Morgan)', 'Horse (Paint)', 'Horse (Thoroughbred)',
+            'Llama',
+            'Pig (Berkshire)', 'Pig (Duroc)', 'Pig (Hampshire)', 'Pig (Potbelly)', 'Pig (Yorkshire)',
+            'Sheep (Dorper)', 'Sheep (Hampshire)', 'Sheep (Merino)', 'Sheep (Suffolk)'
+        ])
     }
     return jsonify(breeds.get(pet_type, []))
 
@@ -1803,6 +1911,68 @@ def petfinder_organizations():
     except Exception as e:
         logger.error(f"PetFinder API error: {e}")
         return jsonify({'success': False, 'error': 'Failed to fetch organizations from PetFinder.'}), 500
+
+# US Cities data (abbreviated list for common cities)
+US_CITIES = {
+    'AL': ['Birmingham', 'Montgomery', 'Huntsville', 'Mobile', 'Tuscaloosa'],
+    'AK': ['Anchorage', 'Fairbanks', 'Juneau', 'Sitka', 'Wasilla'],
+    'AZ': ['Phoenix', 'Tucson', 'Mesa', 'Chandler', 'Scottsdale'],
+    'AR': ['Little Rock', 'Fort Smith', 'Fayetteville', 'Springdale', 'Jonesboro'],
+    'CA': ['Los Angeles', 'San Francisco', 'San Diego', 'Sacramento', 'San Jose'],
+    'CO': ['Denver', 'Colorado Springs', 'Aurora', 'Fort Collins', 'Boulder'],
+    'CT': ['Hartford', 'New Haven', 'Stamford', 'Bridgeport', 'Waterbury'],
+    'DE': ['Wilmington', 'Dover', 'Newark', 'Middletown', 'Smyrna'],
+    'FL': ['Miami', 'Orlando', 'Tampa', 'Jacksonville', 'Tallahassee'],
+    'GA': ['Atlanta', 'Savannah', 'Augusta', 'Athens', 'Macon'],
+    'HI': ['Honolulu', 'Hilo', 'Kailua', 'Kaneohe', 'Waipahu'],
+    'ID': ['Boise', 'Nampa', 'Meridian', 'Idaho Falls', 'Pocatello'],
+    'IL': ['Chicago', 'Springfield', 'Peoria', 'Rockford', 'Champaign'],
+    'IN': ['Indianapolis', 'Fort Wayne', 'Evansville', 'South Bend', 'Bloomington'],
+    'IA': ['Des Moines', 'Cedar Rapids', 'Davenport', 'Sioux City', 'Iowa City'],
+    'KS': ['Wichita', 'Kansas City', 'Topeka', 'Olathe', 'Lawrence'],
+    'KY': ['Louisville', 'Lexington', 'Bowling Green', 'Owensboro', 'Covington'],
+    'LA': ['New Orleans', 'Baton Rouge', 'Shreveport', 'Lafayette', 'Lake Charles'],
+    'ME': ['Portland', 'Lewiston', 'Bangor', 'South Portland', 'Auburn'],
+    'MD': ['Baltimore', 'Annapolis', 'Frederick', 'Rockville', 'Gaithersburg'],
+    'MA': ['Boston', 'Worcester', 'Springfield', 'Cambridge', 'Lowell'],
+    'MI': ['Detroit', 'Grand Rapids', 'Ann Arbor', 'Lansing', 'Flint'],
+    'MN': ['Minneapolis', 'St. Paul', 'Rochester', 'Duluth', 'Bloomington'],
+    'MS': ['Jackson', 'Gulfport', 'Southaven', 'Hattiesburg', 'Biloxi'],
+    'MO': ['Kansas City', 'St. Louis', 'Springfield', 'Columbia', 'Independence'],
+    'MT': ['Billings', 'Missoula', 'Great Falls', 'Bozeman', 'Helena'],
+    'NE': ['Omaha', 'Lincoln', 'Bellevue', 'Grand Island', 'Kearney'],
+    'NV': ['Las Vegas', 'Reno', 'Henderson', 'Carson City', 'Sparks'],
+    'NH': ['Manchester', 'Nashua', 'Concord', 'Dover', 'Rochester'],
+    'NJ': ['Newark', 'Jersey City', 'Paterson', 'Elizabeth', 'Trenton'],
+    'NM': ['Albuquerque', 'Santa Fe', 'Las Cruces', 'Rio Rancho', 'Roswell'],
+    'NY': ['New York City', 'Buffalo', 'Rochester', 'Syracuse', 'Albany'],
+    'NC': ['Charlotte', 'Raleigh', 'Greensboro', 'Durham', 'Winston-Salem'],
+    'ND': ['Fargo', 'Bismarck', 'Grand Forks', 'Minot', 'West Fargo'],
+    'OH': ['Columbus', 'Cleveland', 'Cincinnati', 'Toledo', 'Akron'],
+    'OK': ['Oklahoma City', 'Tulsa', 'Norman', 'Broken Arrow', 'Edmond'],
+    'OR': ['Portland', 'Salem', 'Eugene', 'Gresham', 'Hillsboro'],
+    'PA': ['Philadelphia', 'Pittsburgh', 'Allentown', 'Erie', 'Reading'],
+    'RI': ['Providence', 'Warwick', 'Cranston', 'Pawtucket', 'East Providence'],
+    'SC': ['Columbia', 'Charleston', 'Greenville', 'Myrtle Beach', 'Rock Hill'],
+    'SD': ['Sioux Falls', 'Rapid City', 'Aberdeen', 'Brookings', 'Watertown'],
+    'TN': ['Nashville', 'Memphis', 'Knoxville', 'Chattanooga', 'Clarksville'],
+    'TX': ['Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth'],
+    'UT': ['Salt Lake City', 'West Valley City', 'Provo', 'West Jordan', 'Orem'],
+    'VT': ['Burlington', 'South Burlington', 'Rutland', 'Essex Junction', 'Bennington'],
+    'VA': ['Virginia Beach', 'Richmond', 'Norfolk', 'Chesapeake', 'Newport News'],
+    'WA': ['Seattle', 'Spokane', 'Tacoma', 'Vancouver', 'Bellevue'],
+    'WV': ['Charleston', 'Huntington', 'Morgantown', 'Parkersburg', 'Wheeling'],
+    'WI': ['Milwaukee', 'Madison', 'Green Bay', 'Kenosha', 'Racine'],
+    'WY': ['Cheyenne', 'Casper', 'Laramie', 'Gillette', 'Rock Springs'],
+    'DC': ['Washington']
+}
+
+@app.route('/api/cities/<state>')
+def get_cities(state):
+    """Get cities for a given state"""
+    if state not in US_CITIES:
+        return jsonify([])
+    return jsonify(sorted(US_CITIES[state]))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001, use_reloader=True)
