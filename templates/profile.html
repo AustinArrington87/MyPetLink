@@ -418,10 +418,12 @@
                     </div>
                     
                     <div class="space-y-4">
+                        <!--
                         <button onclick="generateAvatar()" 
                                 class="bg-purple-600 text-white px-6 py-3 rounded-full hover:bg-purple-700 transform transition-all hover:scale-105 shadow-md mx-2">
                             🪄 Generate with AI
                         </button>
+                        -->
                         
                         <button onclick="uploadAvatar()" 
                                 class="bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transform transition-all hover:scale-105 shadow-md mx-2">
@@ -578,10 +580,12 @@
         <h3 class="text-xl font-semibold text-center">Choose Avatar Option</h3>
         
         <div class="flex flex-col space-y-4">
+            <!--
             <button onclick="generateAvatar()" 
                     class="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transform transition-all hover:scale-105">
                 🪄 Generate with AI
             </button>
+            -->
             
             <button onclick="uploadAvatar()" 
                     class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transform transition-all hover:scale-105">
@@ -726,7 +730,7 @@ document.getElementById('avatarUpload').addEventListener('change', function(e) {
 
 function generateAvatar() {
     closeAvatarModal();
-    
+    /*
     const petName = document.getElementById('petName').value;
     const species = document.getElementById('petType').value;
     const breed = document.getElementById('breedSelect').value;
@@ -770,6 +774,7 @@ function generateAvatar() {
         // Hide loading indicator
         document.getElementById('loadingOverlay').classList.add('hidden');
     });
+    */
 }
 
 function selectPet(petId) {
