@@ -247,17 +247,44 @@
                    maxlength="5">
             <button onclick="searchRescues()" 
                     class="bg-purple-500 text-white px-6 py-2 rounded-xl hover:bg-purple-600 transform transition-all hover:scale-105 shadow-md">
-                Search
+                Search Rescues
             </button>
         </div>
         
-        <!-- Results container -->
+        <!-- Results container for rescue tickets -->
         <div id="rescueResults" class="mt-6 space-y-4">
             <!-- Results will be populated here -->
         </div>
 
         <!-- Under the rescueResults div in Find Rescues section -->
         <div id="petfinderOrgs" class="mt-6"></div>
+    </div>
+
+    <!-- Add the new Adopt Pets section below Find Rescues -->
+    <div class="analysis-card rounded-2xl p-6 shadow-lg mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-green-800 flex items-center">
+            <span class="text-2xl mr-2">🏠🐾</span> Adopt Pets
+        </h2>
+        <p class="text-gray-600 mb-4">Enter the zipcode of the area to find adoptable pets near you.</p>
+        <div class="flex gap-4 mb-2">
+            <input type="text"
+                   id="adoptZipcode"
+                   placeholder="Enter zipcode (e.g., 19123)"
+                   class="flex-1 border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                   pattern="[0-9]{5}"
+                   maxlength="5">
+            <button type="button" onclick="getAdoptLocation()"
+                    class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm hover:bg-green-200">
+                📍 Use My Location
+            </button>
+            <button onclick="searchAdoptablePets()"
+                    class="bg-green-500 text-white px-6 py-2 rounded-xl hover:bg-green-600 transform transition-all hover:scale-105 shadow-md">
+                Search Pets
+            </button>
+        </div>
+        <div id="adoptPetsResults" class="mt-6 space-y-4">
+            <!-- Adoptable pets will be shown here -->
+        </div>
     </div>
 
     <!-- Vet Record Analysis -->
