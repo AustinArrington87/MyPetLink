@@ -1912,6 +1912,61 @@ def petfinder_organizations():
         logger.error(f"PetFinder API error: {e}")
         return jsonify({'success': False, 'error': 'Failed to fetch organizations from PetFinder.'}), 500
 
+@app.route('/api/petfinder/animals', methods=['GET'])
+def petfinder_animals():
+    zipcode = request.args.get('zipcode', '').strip()
+    # Accept extra filters
+    animal_type = request.args.get('type')
+    breed = request.args.get('breed')
+    age = request.args.get('age')
+    gender = request.args.get('gender')
+    size = request.args.get('size')
+    color = request.args.get('color')
+    coat = request.args.get('coat')
+    good_with_children = request.args.get('good_with_children')
+    good_with_dogs = request.args.get('good_with_dogs')
+    good_with_cats = request.args.get('good_with_cats')
+    house_trained = request.args.get('house_trained')
+    special_needs = request.args.get('special_needs')
+    status = request.args.get('status', 'adoptable')
+    limit = request.args.get('limit', 20)
+    sort = request.args.get('sort', 'distance')
+    
+    if not zipcode or not zipcode.isdigit() or len(zipcode) != 5:
+        return jsonify({'success': False, 'error': 'Please provide a valid 5-digit zipcode'}), 400
+
+    try:
+        token = get_petfinder_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {
+            "location": zipcode,
+            "distance": 50,  # miles, adjust as needed
+            "status": status,
+            "limit": limit,
+            "sort": sort
+        }
+        # Add extra filters if present
+        if animal_type: params["type"] = animal_type
+        if breed: params["breed"] = breed
+        if age: params["age"] = age
+        if gender: params["gender"] = gender
+        if size: params["size"] = size
+        if color: params["color"] = color
+        if coat: params["coat"] = coat
+        if good_with_children: params["good_with_children"] = good_with_children
+        if good_with_dogs: params["good_with_dogs"] = good_with_dogs
+        if good_with_cats: params["good_with_cats"] = good_with_cats
+        if house_trained: params["house_trained"] = house_trained
+        if special_needs: params["special_needs"] = special_needs
+
+        resp = requests.get("https://api.petfinder.com/v2/animals", headers=headers, params=params)
+        resp.raise_for_status()
+        animals = resp.json().get("animals", [])
+        return jsonify({'success': True, 'animals': animals})
+    except Exception as e:
+        logger.error(f"PetFinder API error: {e}")
+        return jsonify({'success': False, 'error': 'Failed to fetch animals from PetFinder.'}), 500
+
 # US Cities data (abbreviated list for common cities)
 US_CITIES = {
     'AL': ['Birmingham', 'Montgomery', 'Huntsville', 'Mobile', 'Tuscaloosa'],

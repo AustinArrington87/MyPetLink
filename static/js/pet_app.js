@@ -941,142 +941,59 @@ function previewPdf(pdfPath, fileName) {
         }
     });
 }
+
 function searchRescues() {
-    const zipcode = document.getElementById('searchZipcode').value.trim();
-    const resultsContainer = document.getElementById('rescueResults');
-    
+    const zipcode = document.getElementById('searchZipcode').value;
     if (!zipcode || !/^\d{5}$/.test(zipcode)) {
-        alert('Please enter a valid 5-digit zipcode');
+        alert('Please enter a valid 5-digit ZIP code');
         return;
     }
-    
+
     // Show loading state
-    resultsContainer.innerHTML = '<div class="text-center py-4"><img src="/static/img/GIFs/cleo.gif" alt="Loading..." class="mx-auto h-12 w-12"></div>';
-    
+    const resultsDiv = document.getElementById('rescueResults');
+    resultsDiv.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div><p class="mt-2 text-gray-600">Searching for rescues...</p></div>';
+
+    // Fetch rescue tickets
     fetch(`/search-rescues?zipcode=${zipcode}`)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                if (data.rescues.length === 0) {
-                    resultsContainer.innerHTML = `
-                        <div class="text-center py-4 text-gray-600">
-                            No rescue tickets found in zipcode ${zipcode}
+            if (data.error) {
+                resultsDiv.innerHTML = `<div class="text-red-500">${data.error}</div>`;
+                return;
+            }
+
+            if (data.rescues.length === 0) {
+                resultsDiv.innerHTML = '<div class="text-gray-600">No rescues found in this area.</div>';
+                return;
+            }
+
+            // Display rescue tickets
+            let html = '<div class="space-y-4">';
+            data.rescues.forEach(rescue => {
+                html += `
+                    <div class="bg-white p-4 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold">${rescue.ticket_name || rescue.name || 'No Name'}</h3>
+                        <p class="text-gray-600">${rescue.description || ''}</p>
+                        <div class="text-sm text-gray-500 mt-2">
+                            ${rescue.contact_name ? `<div>Contact: ${rescue.contact_name}</div>` : ''}
+                            ${rescue.contact_phone ? `<div>Phone: <a href="tel:${rescue.contact_phone}" class="text-blue-700">${rescue.contact_phone}</a></div>` : ''}
+                            ${rescue.contact_email ? `<div>Email: <a href="mailto:${rescue.contact_email}" class="text-blue-700">${rescue.contact_email}</a></div>` : ''}
+                            ${rescue.contact_address ? `<div>Location: ${rescue.contact_address}</div>` : ''}
                         </div>
-                    `;
-                    return;
-                }
-                
-                resultsContainer.innerHTML = data.rescues.map(rescue => `
-                    <div class="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow mb-4">
-                        <div class="flex justify-between items-start mb-3">
-                            <h3 class="font-semibold text-lg text-purple-800">${rescue.ticket_name}</h3>
-                            <span class="text-sm text-gray-500">${new Date(rescue.date).toLocaleDateString()}</span>
-                        </div>
-                        <p class="text-gray-600 mb-3">${rescue.description}</p>
-                        <div class="flex flex-wrap gap-2 mb-3">
-                            <span class="inline-block bg-purple-100 text-purple-800 text-sm px-2 py-1 rounded">
-                                ${rescue.species}
-                            </span>
-                            ${rescue.breed ? `
-                                <span class="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
-                                    ${rescue.breed}
-                                </span>
-                            ` : ''}
-                            <span class="inline-block bg-gray-100 text-gray-800 text-sm px-2 py-1 rounded">
-                                📍 ${rescue.zipcode}
-                            </span>
-                        </div>
-                        <!-- Contact Information Section -->
-                        <div class="border-t pt-3 mb-2">
-                            <button onclick="toggleContactInfo('contact-${rescue.id}')"
-                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors w-full flex items-center justify-center gap-2">
-                                <span class="text-lg">📞</span> Contact
-                            </button>
-                            <div id="contact-${rescue.id}" class="hidden mt-3 bg-gray-50 p-3 rounded-lg">
-                                <div class="space-y-2">
-                                    ${rescue.contact_name ? `
-                                        <p class="flex items-center gap-2">
-                                            <span class="font-medium">👤 Contact:</span> 
-                                            ${rescue.contact_name}
-                                        </p>
-                                    ` : ''}
-                                    ${rescue.contact_phone ? `
-                                        <p class="flex items-center gap-2">
-                                            <span class="font-medium">📱 Phone:</span>
-                                            <a href="tel:${rescue.contact_phone}" class="text-blue-600 hover:underline">
-                                                ${rescue.contact_phone}
-                                            </a>
-                                        </p>
-                                    ` : ''}
-                                    ${rescue.contact_email ? `
-                                        <p class="flex items-center gap-2">
-                                            <span class="font-medium">📧 Email:</span>
-                                            <a href="mailto:${rescue.contact_email}" class="text-blue-600 hover:underline">
-                                                ${rescue.contact_email}
-                                            </a>
-                                        </p>
-                                    ` : ''}
-                                    ${rescue.contact_address ? `
-                                        <p class="flex items-center gap-2">
-                                            <span class="font-medium">📍 Location:</span>
-                                            ${rescue.contact_address}
-                                        </p>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        </div>
-                        <!-- PetFinder Orgs Section -->
-                        <div>
-                            <button id="orgs-btn-${rescue.id}" data-open="false"
-                                onclick="toggleOrgs('${rescue.id}', '${rescue.zipcode}')"
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors w-full flex items-center justify-center gap-2">
-                                <span class="text-lg">🏢</span> Show Nearby Organizations
-                            </button>
-                            <div id="orgs-${rescue.id}" class="hidden mt-3"></div>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                resultsContainer.innerHTML = `
-                    <div class="text-center py-4 text-red-600">
-                        ${data.error || 'Failed to search rescues. Please try again.'}
                     </div>
                 `;
-            }
+            });
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+
+            // Also fetch Petfinder organizations
+            fetchPetfinderOrgs(zipcode);
         })
         .catch(error => {
             console.error('Error:', error);
-            resultsContainer.innerHTML = `
-                <div class="text-center py-4 text-red-600">
-                    Failed to search rescues. Please try again.
-                </div>
-            `;
+            resultsDiv.innerHTML = '<div class="text-red-500">An error occurred while searching for rescues.</div>';
         });
 }
-
-// Add this function to toggle contact information visibility
-function toggleContactInfo(contactId) {
-    const contactDiv = document.getElementById(contactId);
-    if (contactDiv.classList.contains('hidden')) {
-        // Hide any other open contact info first
-        document.querySelectorAll('[id^="contact-"]').forEach(div => {
-            if (div.id !== contactId) {
-                div.classList.add('hidden');
-            }
-        });
-        // Show this contact info
-        contactDiv.classList.remove('hidden');
-    } else {
-        contactDiv.classList.add('hidden');
-    }
-}
-
-// Add event listener for Enter key on zipcode input
-document.getElementById('searchZipcode')?.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        searchRescues();
-    }
-});
 
 function fetchPetfinderOrgs(zipcode) {
     const orgsContainer = document.getElementById('petfinderOrgs');
@@ -1156,4 +1073,95 @@ function toggleOrgs(ticketId, zipcode) {
         btn.innerHTML = `<span class="text-lg">🏢</span> Show Nearby Organizations`;
         btn.setAttribute('data-open', 'false');
     }
+}
+
+// Adopt Pets section: get location and search adoptable pets
+function getAdoptLocation() {
+    if (navigator.geolocation) {
+        const zipInput = document.getElementById('adoptZipcode');
+        const originalPlaceholder = zipInput.placeholder;
+        zipInput.placeholder = '📍 Searching for your location...';
+        zipInput.disabled = true;
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Try to extract ZIP code from address
+                        const address = data.address;
+                        let zipcode = address.postcode || '';
+                        zipInput.value = zipcode;
+                        zipInput.disabled = false;
+                        zipInput.placeholder = originalPlaceholder;
+                    })
+                    .catch(error => {
+                        console.error('Error getting location:', error);
+                        alert('Could not get address. Please enter manually.');
+                        zipInput.disabled = false;
+                        zipInput.placeholder = originalPlaceholder;
+                    });
+            },
+            error => {
+                console.error('Error:', error);
+                alert('Could not get location. Please enter address manually.');
+                zipInput.disabled = false;
+                zipInput.placeholder = originalPlaceholder;
+            }
+        );
+    } else {
+        alert('Geolocation is not supported by your browser');
+    }
+}
+
+function searchAdoptablePets() {
+    const zipcode = document.getElementById('adoptZipcode').value.trim();
+    const resultsDiv = document.getElementById('adoptPetsResults');
+    if (!zipcode || !/^\d{5}$/.test(zipcode)) {
+        alert('Please enter a valid 5-digit ZIP code');
+        return;
+    }
+    resultsDiv.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div><p class="mt-2 text-gray-600">Searching for adoptable pets...</p></div>';
+    fetch(`/api/petfinder/animals?zipcode=${zipcode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                resultsDiv.innerHTML = `<div class='text-red-500'>${data.error || 'Failed to fetch pets.'}</div>`;
+                return;
+            }
+            if (!data.animals || data.animals.length === 0) {
+                resultsDiv.innerHTML = '<div class="text-gray-600">No adoptable pets found in this area.</div>';
+                return;
+            }
+            let html = '<div class="space-y-4">';
+            data.animals.forEach(animal => {
+                html += `
+                    <div class="bg-white p-4 rounded-lg shadow-md flex flex-col md:flex-row gap-4">
+                        <div class="md:w-1/4 flex-shrink-0 flex items-center justify-center">
+                            ${animal.photos && animal.photos.length > 0 ? `<img src="${animal.photos[0].medium}" alt="${animal.name}" class="w-32 h-32 object-cover rounded-lg">` : `<div class="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-4xl">🐾</div>`}
+                        </div>
+                        <div class="md:w-3/4">
+                            <h3 class="text-lg font-semibold text-green-800">${animal.name}</h3>
+                            <div class="text-sm text-gray-500 mb-1">${animal.type} • ${animal.breeds?.primary || ''} • ${animal.age} • ${animal.gender}</div>
+                            <p class="text-gray-700 mb-2">${animal.description ? animal.description.substring(0, 200) + (animal.description.length > 200 ? '...' : '') : ''}</p>
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                ${animal.distance ? `<span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">${Math.round(animal.distance)} miles away</span>` : ''}
+                                ${animal.status ? `<span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">${animal.status}</span>` : ''}
+                            </div>
+                            <div class="text-sm text-gray-600 mb-1">
+                                ${animal.contact?.email ? `<div>Email: <a href="mailto:${animal.contact.email}" class="text-blue-700">${animal.contact.email}</a></div>` : ''}
+                                ${animal.contact?.phone ? `<div>Phone: <a href="tel:${animal.contact.phone}" class="text-blue-700">${animal.contact.phone}</a></div>` : ''}
+                                ${animal.contact?.address?.city ? `<div>Location: ${animal.contact.address.city}, ${animal.contact.address.state || ''} ${animal.contact.address.postcode || ''}</div>` : ''}
+                            </div>
+                            <a href="${animal.url}" target="_blank" class="inline-block mt-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors">View on Petfinder</a>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            resultsDiv.innerHTML = '<div class="text-red-500">An error occurred while searching for pets.</div>';
+        });
 } 
