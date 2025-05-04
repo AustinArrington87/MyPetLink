@@ -266,7 +266,7 @@
             <span class="text-2xl mr-2">🏠🐾</span> Adopt Pets
         </h2>
         <p class="text-gray-600 mb-4">Enter the zipcode of the area to find adoptable pets near you.</p>
-        <div class="flex gap-4 mb-2">
+        <div class="flex flex-col md:flex-row gap-2 md:gap-4 mb-2">
             <input type="text"
                    id="adoptZipcode"
                    placeholder="Enter zipcode (e.g., 19123)"
@@ -274,11 +274,11 @@
                    pattern="[0-9]{5}"
                    maxlength="5">
             <button type="button" onclick="getAdoptLocation()"
-                    class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm hover:bg-green-200">
+                    class="bg-green-100 text-green-800 px-3 py-2 rounded-full text-sm hover:bg-green-200 w-full md:w-auto">
                 📍 Use My Location
             </button>
             <button onclick="searchAdoptablePets()"
-                    class="bg-green-500 text-white px-6 py-2 rounded-xl hover:bg-green-600 transform transition-all hover:scale-105 shadow-md">
+                    class="bg-green-500 text-white px-6 py-2 rounded-xl hover:bg-green-600 transform transition-all hover:scale-105 shadow-md w-full md:w-auto">
                 Search Pets
             </button>
         </div>
