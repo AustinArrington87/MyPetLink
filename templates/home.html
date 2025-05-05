@@ -238,7 +238,7 @@
             <span class="text-2xl mr-2">🔍</span> Find Rescues
         </h2>
         <p class="text-gray-600 mb-4">Enter the zipcode of the area you are searching for active rescue tickets.</p>
-        <div class="flex gap-4">
+        <div class="flex flex-col md:flex-row gap-2 md:gap-4 mb-2">
             <input type="text" 
                    id="searchZipcode" 
                    placeholder="Enter zipcode (e.g., 19123)" 
@@ -246,7 +246,7 @@
                    pattern="[0-9]{5}"
                    maxlength="5">
             <button onclick="searchRescues()" 
-                    class="bg-purple-500 text-white px-6 py-2 rounded-xl hover:bg-purple-600 transform transition-all hover:scale-105 shadow-md">
+                    class="bg-purple-500 text-white px-6 py-2 rounded-xl hover:bg-purple-600 transform transition-all hover:scale-105 shadow-md w-full md:w-auto">
                 Search Rescues
             </button>
         </div>
