@@ -1512,8 +1512,9 @@ def get_breeds(pet_type):
     breeds = {
         'dog': sorted([
             'Affenpinscher', 'Afghan Hound', 'Airedale Terrier', 'Akita', 'Alaskan Malamute',
-            'American Bulldog', 'American Eskimo Dog', 'American Pit Bull Terrier', 'American Staffordshire Terrier',
+            'American Bulldog', 'American Bully', 'American Eskimo Dog', 'American Pit Bull Terrier', 'American Staffordshire Terrier',
             'Australian Cattle Dog', 'Australian Shepherd', 'Australian Terrier',
+            'Mixed Breed',
             'Basenji', 'Basset Hound', 'Beagle', 'Bearded Collie', 'Belgian Malinois',
             'Bernese Mountain Dog', 'Bichon Frise', 'Bloodhound', 'Border Collie', 'Border Terrier',
             'Boston Terrier', 'Boxer', 'Boykin Spaniel', 'Brittany', 'Brussels Griffon', 'Bull Terrier',
@@ -2019,7 +2020,8 @@ US_CITIES = {
     'WV': ['Charleston', 'Huntington', 'Morgantown', 'Parkersburg', 'Wheeling'],
     'WI': ['Milwaukee', 'Madison', 'Green Bay', 'Kenosha', 'Racine'],
     'WY': ['Cheyenne', 'Casper', 'Laramie', 'Gillette', 'Rock Springs'],
-    'DC': ['Washington']
+    'DC': ['Washington'],
+    'PR': ['San Juan', 'Bayamón', 'Carolina', 'Ponce', 'Caguas', 'Guaynabo', 'Mayagüez', 'Trujillo Alto', 'Arecibo', 'Fajardo', 'Vega Baja', 'Cayey', 'Humacao', 'Guayama', 'Yauco', 'Toa Baja', 'Toa Alta', 'Manatí', 'Canóvanas', 'Dorado', 'Coamo']
 }
 
 @app.route('/api/cities/<state>')
