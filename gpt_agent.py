@@ -208,19 +208,33 @@ async def analyze_poop_image(image_path):
         with open(image_path, "rb") as image_file:
             image_data = image_file.read()
         
-        # First upload the file to OpenAI
+        # First upload the file to OpenAI with retry logic
         logger.info("Uploading image to OpenAI for analysis")
-        try:
-            # Upload the file to the OpenAI API
-            file_response = client.files.create(
-                file=open(image_path, "rb"),
-                purpose="assistants"
-            )
-            file_id = file_response.id
-            logger.info(f"Successfully uploaded image to OpenAI, file_id: {file_id}")
-        except Exception as upload_error:
-            logger.error(f"Error uploading image to OpenAI: {upload_error}")
-            raise upload_error
+        max_upload_retries = 3
+        upload_retry_count = 0
+        upload_backoff = 2  # seconds
+        
+        file_id = None
+        while upload_retry_count < max_upload_retries and not file_id:
+            try:
+                with open(image_path, "rb") as file_obj:
+                    file_response = client.files.create(
+                        file=file_obj,
+                        purpose="assistants"
+                    )
+                file_id = file_response.id
+                logger.info(f"Successfully uploaded image to OpenAI, file_id: {file_id}")
+            except Exception as upload_error:
+                upload_retry_count += 1
+                logger.warning(f"Upload attempt {upload_retry_count}/{max_upload_retries} failed: {upload_error}")
+                
+                if upload_retry_count >= max_upload_retries:
+                    logger.error("Maximum upload retries reached")
+                    raise upload_error
+                
+                # Wait with exponential backoff
+                await asyncio.sleep(upload_backoff)
+                upload_backoff *= 2
 
         # Create a thread for the analysis
         thread = client.beta.threads.create()
@@ -247,25 +261,64 @@ async def analyze_poop_image(image_path):
             assistant_id="asst_bYxIi1SefCRrdHSHfByUtNjd"  # Your assistant ID
         )
 
-        # Wait for completion
-        max_retries = 30  # Maximum number of times to check for completion
+        # Wait for completion with exponential backoff and longer timeout
+        max_retries = 60  # Maximum number of times to check for completion (increased from 30)
         retry_count = 0
+        backoff_time = 1  # Starting backoff time in seconds
+        max_backoff = 10  # Maximum backoff time in seconds
+        
         while retry_count < max_retries:
-            run = client.beta.threads.runs.retrieve(
-                thread_id=thread.id,
-                run_id=run.id
-            )
-            if run.status == 'completed':
-                break
-            elif run.status == 'failed':
-                error_msg = f"Analysis failed: {run.last_error}" if hasattr(run, 'last_error') else "Analysis failed"
-                raise Exception(error_msg)
-            retry_count += 1
-            await asyncio.sleep(1)
+            try:
+                run = client.beta.threads.runs.retrieve(
+                    thread_id=thread.id,
+                    run_id=run.id
+                )
+                
+                if run.status == 'completed':
+                    logger.info(f"Analysis completed successfully after {retry_count} retries")
+                    break
+                elif run.status == 'failed':
+                    error_msg = f"Analysis failed: {run.last_error}" if hasattr(run, 'last_error') else "Analysis failed"
+                    raise Exception(error_msg)
+                elif run.status in ['queued', 'in_progress']:
+                    logger.info(f"Analysis in progress: {run.status}, retry {retry_count+1}/{max_retries}")
+                else:
+                    logger.warning(f"Unexpected status: {run.status}, continuing to wait")
+                
+                # Exponential backoff with a maximum
+                backoff_time = min(backoff_time * 1.5, max_backoff)
+                retry_count += 1
+                await asyncio.sleep(backoff_time)
+            except Exception as retrieval_error:
+                logger.error(f"Error retrieving run status: {retrieval_error}")
+                retry_count += 1
+                await asyncio.sleep(backoff_time)
+                continue
 
-        # Get the response
-        messages = client.beta.threads.messages.list(thread_id=thread.id)
-        analysis = messages.data[0].content[0].text.value
+        # Check if we reached max retries without completion
+        if retry_count >= max_retries:
+            logger.error(f"Analysis timed out after maximum {max_retries} retries")
+            return {
+                'summary': 'Analysis timed out',
+                'concerns': 'The analysis took too long to complete',
+                'recommendations': 'Please try again with a clearer image or contact support if the issue persists'
+            }
+            
+        # Get the response with error handling
+        try:
+            messages = client.beta.threads.messages.list(thread_id=thread.id)
+            if not messages.data or not messages.data[0].content:
+                raise ValueError("No message content received from OpenAI")
+                
+            analysis = messages.data[0].content[0].text.value
+            logger.info("Successfully retrieved analysis from OpenAI")
+        except Exception as message_error:
+            logger.error(f"Error retrieving analysis result: {message_error}")
+            return {
+                'summary': 'Error retrieving analysis',
+                'concerns': f'Technical issue: {str(message_error)}',
+                'recommendations': 'Please try again later'
+            }
 
         # Parse sections
         sections = analysis.split('\n\n')
