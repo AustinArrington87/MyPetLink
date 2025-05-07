@@ -239,7 +239,7 @@ async def analyze_poop_image(image_path):
         # Create a thread for the analysis
         thread = client.beta.threads.create()
         
-        # Create a message with the image
+        # Create a message with the image using image_file type instead of file_attachment
         message = client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
@@ -249,7 +249,7 @@ async def analyze_poop_image(image_path):
                     "text": "Please analyze this pet stool sample image. Consider color, consistency, and any visible abnormalities. Format the response in three sections: summary, concerns, and recommendations."
                 },
                 {
-                    "type": "file_attachment",
+                    "type": "image_file",
                     "file_id": file_id
                 }
             ]
