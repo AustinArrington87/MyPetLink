@@ -250,7 +250,9 @@ async def analyze_poop_image(image_path):
                 },
                 {
                     "type": "image_file",
-                    "file_id": file_id
+                    "image_file": {
+                        "file_id": file_id
+                    }
                 }
             ]
         )
