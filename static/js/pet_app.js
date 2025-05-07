@@ -215,10 +215,16 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(data => {
+                console.log('Poop analysis API response:', data);  // Add logging to see the response structure
+                
+                // Check if data contains summary/concerns/recommendations directly or in result property
                 if (data.success) {
-                    document.getElementById('poopSummary').innerHTML = formatSection(data.result.summary);
-                    document.getElementById('poopConcerns').innerHTML = formatSection(data.result.concerns);
-                    document.getElementById('poopRecommendations').innerHTML = formatSection(data.result.recommendations);
+                    // Get results from data.result if it exists, otherwise from data directly
+                    const results = data.result || data;
+                    
+                    document.getElementById('poopSummary').innerHTML = formatSection(results.summary);
+                    document.getElementById('poopConcerns').innerHTML = formatSection(results.concerns);
+                    document.getElementById('poopRecommendations').innerHTML = formatSection(results.recommendations);
                     document.getElementById('poopAnalysisResult').classList.remove('hidden');
                     
                     // Scroll to results

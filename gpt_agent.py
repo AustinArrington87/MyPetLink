@@ -208,24 +208,38 @@ async def analyze_poop_image(image_path):
         with open(image_path, "rb") as image_file:
             image_data = image_file.read()
         
-        # First upload the file to OpenAI
+        # First upload the file to OpenAI with retry logic
         logger.info("Uploading image to OpenAI for analysis")
-        try:
-            # Upload the file to the OpenAI API
-            file_response = client.files.create(
-                file=open(image_path, "rb"),
-                purpose="assistants"
-            )
-            file_id = file_response.id
-            logger.info(f"Successfully uploaded image to OpenAI, file_id: {file_id}")
-        except Exception as upload_error:
-            logger.error(f"Error uploading image to OpenAI: {upload_error}")
-            raise upload_error
+        max_upload_retries = 3
+        upload_retry_count = 0
+        upload_backoff = 2  # seconds
+        
+        file_id = None
+        while upload_retry_count < max_upload_retries and not file_id:
+            try:
+                with open(image_path, "rb") as file_obj:
+                    file_response = client.files.create(
+                        file=file_obj,
+                        purpose="assistants"
+                    )
+                file_id = file_response.id
+                logger.info(f"Successfully uploaded image to OpenAI, file_id: {file_id}")
+            except Exception as upload_error:
+                upload_retry_count += 1
+                logger.warning(f"Upload attempt {upload_retry_count}/{max_upload_retries} failed: {upload_error}")
+                
+                if upload_retry_count >= max_upload_retries:
+                    logger.error("Maximum upload retries reached")
+                    raise upload_error
+                
+                # Wait with exponential backoff
+                await asyncio.sleep(upload_backoff)
+                upload_backoff *= 2
 
         # Create a thread for the analysis
         thread = client.beta.threads.create()
         
-        # Create a message with the image
+        # Create a message with the image using image_file type instead of file_attachment
         message = client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
@@ -235,8 +249,10 @@ async def analyze_poop_image(image_path):
                     "text": "Please analyze this pet stool sample image. Consider color, consistency, and any visible abnormalities. Format the response in three sections: summary, concerns, and recommendations."
                 },
                 {
-                    "type": "file_attachment",
-                    "file_id": file_id
+                    "type": "image_file",
+                    "image_file": {
+                        "file_id": file_id
+                    }
                 }
             ]
         )
@@ -247,42 +263,135 @@ async def analyze_poop_image(image_path):
             assistant_id="asst_bYxIi1SefCRrdHSHfByUtNjd"  # Your assistant ID
         )
 
-        # Wait for completion
-        max_retries = 30  # Maximum number of times to check for completion
+        # Wait for completion with exponential backoff and longer timeout
+        max_retries = 60  # Maximum number of times to check for completion (increased from 30)
         retry_count = 0
+        backoff_time = 1  # Starting backoff time in seconds
+        max_backoff = 10  # Maximum backoff time in seconds
+        
         while retry_count < max_retries:
-            run = client.beta.threads.runs.retrieve(
-                thread_id=thread.id,
-                run_id=run.id
-            )
-            if run.status == 'completed':
-                break
-            elif run.status == 'failed':
-                error_msg = f"Analysis failed: {run.last_error}" if hasattr(run, 'last_error') else "Analysis failed"
-                raise Exception(error_msg)
-            retry_count += 1
-            await asyncio.sleep(1)
+            try:
+                run = client.beta.threads.runs.retrieve(
+                    thread_id=thread.id,
+                    run_id=run.id
+                )
+                
+                if run.status == 'completed':
+                    logger.info(f"Analysis completed successfully after {retry_count} retries")
+                    break
+                elif run.status == 'failed':
+                    error_msg = f"Analysis failed: {run.last_error}" if hasattr(run, 'last_error') else "Analysis failed"
+                    raise Exception(error_msg)
+                elif run.status in ['queued', 'in_progress']:
+                    logger.info(f"Analysis in progress: {run.status}, retry {retry_count+1}/{max_retries}")
+                else:
+                    logger.warning(f"Unexpected status: {run.status}, continuing to wait")
+                
+                # Exponential backoff with a maximum
+                backoff_time = min(backoff_time * 1.5, max_backoff)
+                retry_count += 1
+                await asyncio.sleep(backoff_time)
+            except Exception as retrieval_error:
+                logger.error(f"Error retrieving run status: {retrieval_error}")
+                retry_count += 1
+                await asyncio.sleep(backoff_time)
+                continue
 
-        # Get the response
-        messages = client.beta.threads.messages.list(thread_id=thread.id)
-        analysis = messages.data[0].content[0].text.value
+        # Check if we reached max retries without completion
+        if retry_count >= max_retries:
+            logger.error(f"Analysis timed out after maximum {max_retries} retries")
+            return {
+                'summary': 'Analysis timed out',
+                'concerns': 'The analysis took too long to complete',
+                'recommendations': 'Please try again with a clearer image or contact support if the issue persists'
+            }
+            
+        # Get the response with minimal logging
+        try:
+            logger.info(f"Fetching messages from thread {thread.id}")
+            messages = client.beta.threads.messages.list(thread_id=thread.id)
+            
+            if not messages.data:
+                logger.error("No messages returned from OpenAI")
+                raise ValueError("No messages received from OpenAI")
+            
+            # Get the first message (AI's response)
+            first_message = messages.data[0]
+            
+            if not first_message.content:
+                logger.error("Message has no content")
+                raise ValueError("Empty content in OpenAI response")
+            
+            # Get the content
+            first_content = first_message.content[0]
+            
+            if not hasattr(first_content, 'text') or not hasattr(first_content.text, 'value'):
+                logger.error("Unexpected response structure from OpenAI")
+                raise ValueError("Unexpected content structure in OpenAI response")
+            
+            analysis = first_content.text.value
+            logger.info("Successfully retrieved analysis from OpenAI")
+            
+            # Log brief content preview for debugging issues
+            preview = analysis[:100] + ('...' if len(analysis) > 100 else '')
+            logger.info(f"Response preview: {preview}")
+            
+            # Check if content is empty or very short
+            if not analysis or len(analysis) < 10:
+                logger.warning(f"Analysis content is empty or very short")
+            
+        except Exception as message_error:
+            logger.error(f"Error retrieving analysis result: {message_error}")
+            return {
+                'summary': 'Error retrieving analysis',
+                'concerns': f'Technical issue: {str(message_error)}',
+                'recommendations': 'Please try again later'
+            }
 
-        # Parse sections
+        # Parse sections with minimal logging
+        logger.info("Parsing response into sections")
         sections = analysis.split('\n\n')
+        
         result = {
             'summary': '',
             'concerns': '',
             'recommendations': ''
         }
 
-        for section in sections:
-            if section.startswith('Summary:'):
-                result['summary'] = section.replace('Summary:', '').strip()
-            elif section.startswith('Concerns:'):
-                result['concerns'] = section.replace('Concerns:', '').strip()
-            elif section.startswith('Recommendations:'):
-                result['recommendations'] = section.replace('Recommendations:', '').strip()
+        # Try different section separators if we didn't get multiple sections
+        if len(sections) <= 1 and '\n' in analysis:
+            sections = analysis.split('\n')
 
+        # Parse each section
+        for section in sections:
+            # Check for each section header with case-insensitive match
+            if 'summary:' in section.lower():
+                result['summary'] = section.replace('Summary:', '', 1).strip()
+                # Try case-insensitive replace if the first replace didn't work
+                if 'Summary:' in section and result['summary'] == section:
+                    result['summary'] = section[section.lower().find('summary:') + 8:].strip()
+            elif 'concerns:' in section.lower():
+                result['concerns'] = section.replace('Concerns:', '', 1).strip()
+                # Try case-insensitive replace if the first replace didn't work
+                if 'Concerns:' in section and result['concerns'] == section:
+                    result['concerns'] = section[section.lower().find('concerns:') + 9:].strip()
+            elif 'recommendations:' in section.lower():
+                result['recommendations'] = section.replace('Recommendations:', '', 1).strip()
+                # Try case-insensitive replace if the first replace didn't work
+                if 'Recommendations:' in section and result['recommendations'] == section:
+                    result['recommendations'] = section[section.lower().find('recommendations:') + 16:].strip()
+
+        # Check if we found any section headers and if not, use the entire content as an error message
+        if not result['summary'] and not result['concerns'] and not result['recommendations'] and analysis:
+            logger.info("No sections found, using entire response as error message")
+            # Put the entire model response as the summary to show the user what went wrong
+            result['summary'] = analysis.strip()
+            result['concerns'] = 'The image could not be properly analyzed'
+            result['recommendations'] = 'Please try again with a clear image of a stool sample'
+        
+        # Simple log of success/failure
+        has_content = bool(result['summary']) or bool(result['concerns']) or bool(result['recommendations'])
+        logger.info(f"Analysis complete, returning {has_content=}")
         return result
 
     except Exception as e:
