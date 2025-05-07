@@ -306,14 +306,40 @@ async def analyze_poop_image(image_path):
                 'recommendations': 'Please try again with a clearer image or contact support if the issue persists'
             }
             
-        # Get the response with error handling
+        # Get the response with minimal logging
         try:
+            logger.info(f"Fetching messages from thread {thread.id}")
             messages = client.beta.threads.messages.list(thread_id=thread.id)
-            if not messages.data or not messages.data[0].content:
-                raise ValueError("No message content received from OpenAI")
-                
-            analysis = messages.data[0].content[0].text.value
+            
+            if not messages.data:
+                logger.error("No messages returned from OpenAI")
+                raise ValueError("No messages received from OpenAI")
+            
+            # Get the first message (AI's response)
+            first_message = messages.data[0]
+            
+            if not first_message.content:
+                logger.error("Message has no content")
+                raise ValueError("Empty content in OpenAI response")
+            
+            # Get the content
+            first_content = first_message.content[0]
+            
+            if not hasattr(first_content, 'text') or not hasattr(first_content.text, 'value'):
+                logger.error("Unexpected response structure from OpenAI")
+                raise ValueError("Unexpected content structure in OpenAI response")
+            
+            analysis = first_content.text.value
             logger.info("Successfully retrieved analysis from OpenAI")
+            
+            # Log brief content preview for debugging issues
+            preview = analysis[:100] + ('...' if len(analysis) > 100 else '')
+            logger.info(f"Response preview: {preview}")
+            
+            # Check if content is empty or very short
+            if not analysis or len(analysis) < 10:
+                logger.warning(f"Analysis content is empty or very short")
+            
         except Exception as message_error:
             logger.error(f"Error retrieving analysis result: {message_error}")
             return {
@@ -322,22 +348,50 @@ async def analyze_poop_image(image_path):
                 'recommendations': 'Please try again later'
             }
 
-        # Parse sections
+        # Parse sections with minimal logging
+        logger.info("Parsing response into sections")
         sections = analysis.split('\n\n')
+        
         result = {
             'summary': '',
             'concerns': '',
             'recommendations': ''
         }
 
-        for section in sections:
-            if section.startswith('Summary:'):
-                result['summary'] = section.replace('Summary:', '').strip()
-            elif section.startswith('Concerns:'):
-                result['concerns'] = section.replace('Concerns:', '').strip()
-            elif section.startswith('Recommendations:'):
-                result['recommendations'] = section.replace('Recommendations:', '').strip()
+        # Try different section separators if we didn't get multiple sections
+        if len(sections) <= 1 and '\n' in analysis:
+            sections = analysis.split('\n')
 
+        # Parse each section
+        for section in sections:
+            # Check for each section header with case-insensitive match
+            if 'summary:' in section.lower():
+                result['summary'] = section.replace('Summary:', '', 1).strip()
+                # Try case-insensitive replace if the first replace didn't work
+                if 'Summary:' in section and result['summary'] == section:
+                    result['summary'] = section[section.lower().find('summary:') + 8:].strip()
+            elif 'concerns:' in section.lower():
+                result['concerns'] = section.replace('Concerns:', '', 1).strip()
+                # Try case-insensitive replace if the first replace didn't work
+                if 'Concerns:' in section and result['concerns'] == section:
+                    result['concerns'] = section[section.lower().find('concerns:') + 9:].strip()
+            elif 'recommendations:' in section.lower():
+                result['recommendations'] = section.replace('Recommendations:', '', 1).strip()
+                # Try case-insensitive replace if the first replace didn't work
+                if 'Recommendations:' in section and result['recommendations'] == section:
+                    result['recommendations'] = section[section.lower().find('recommendations:') + 16:].strip()
+
+        # Check if we found any section headers and if not, use the entire content as an error message
+        if not result['summary'] and not result['concerns'] and not result['recommendations'] and analysis:
+            logger.info("No sections found, using entire response as error message")
+            # Put the entire model response as the summary to show the user what went wrong
+            result['summary'] = analysis.strip()
+            result['concerns'] = 'The image could not be properly analyzed'
+            result['recommendations'] = 'Please try again with a clear image of a stool sample'
+        
+        # Simple log of success/failure
+        has_content = bool(result['summary']) or bool(result['concerns']) or bool(result['recommendations'])
+        logger.info(f"Analysis complete, returning {has_content=}")
         return result
 
     except Exception as e:
