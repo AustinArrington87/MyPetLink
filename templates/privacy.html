@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy{% endblock %}
+
+{% block content %}
+<div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+        <a href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='img/pet_logo_text.png') }}" 
+                 alt="MyPetLink Logo" 
+                 class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300">
+        </a>
+    </div>
+</div>
+
+<div class="max-w-4xl mx-auto mt-20 px-4">
+    <div class="bg-white rounded-2xl p-8 shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">Privacy Policy</h1>
+        <p class="text-gray-600 mb-6">Last updated: March 11, 2025</p>
+
+        <div class="space-y-8">
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">1. Introduction</h2>
+                <p class="text-gray-700 mb-4">
+                    Welcome to MyPetLink. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">2. Information We Collect</h2>
+                <div class="space-y-4">
+                    <h3 class="text-xl font-medium text-gray-800">2.1 Personal Information</h3>
+                    <ul class="list-disc pl-6 text-gray-700 space-y-2">
+                        <li>Name and contact information</li>
+                        <li>Email address</li>
+                        <li>Phone number</li>
+                        <li>Location data</li>
+                        <li>Pet information (name, species, breed, age, health records)</li>
+                    </ul>
+
+                    <h3 class="text-xl font-medium text-gray-800">2.2 Technical Information</h3>
+                    <ul class="list-disc pl-6 text-gray-700 space-y-2">
+                        <li>IP address</li>
+                        <li>Browser type and version</li>
+                        <li>Device information</li>
+                        <li>Usage data and analytics</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">3. How We Use Your Information</h2>
+                <div class="space-y-4">
+                    <p class="text-gray-700">We use your personal information for the following purposes:</p>
+                    <ul class="list-disc pl-6 text-gray-700 space-y-2">
+                        <li>To provide and maintain our service</li>
+                        <li>To notify you about changes to our service</li>
+                        <li>To provide customer support</li>
+                        <li>To gather analysis or valuable information to improve our service</li>
+                        <li>To monitor the usage of our service</li>
+                        <li>To detect, prevent and address technical issues</li>
+                        <li>To provide you with news, special offers and general information about our services</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">4. Data Security</h2>
+                <p class="text-gray-700 mb-4">
+                    We have implemented appropriate security measures to prevent your personal data from being accidentally lost, used, or accessed in an unauthorized way, altered, or disclosed. We limit access to your personal data to those employees, agents, contractors, and other third parties who have a business need to know.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">5. Your Rights</h2>
+                <div class="space-y-4">
+                    <p class="text-gray-700">Under data protection laws, you have rights including:</p>
+                    <ul class="list-disc pl-6 text-gray-700 space-y-2">
+                        <li>Your right of access</li>
+                        <li>Your right to rectification</li>
+                        <li>Your right to erasure</li>
+                        <li>Your right to restrict processing</li>
+                        <li>Your right to data portability</li>
+                        <li>Your right to object</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">6. Cookies</h2>
+                <p class="text-gray-700 mb-4">
+                    We use cookies and similar tracking technologies to track activity on our service and hold certain information. Cookies are files with a small amount of data which may include an anonymous unique identifier.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">7. Third-Party Services</h2>
+                <p class="text-gray-700 mb-4">
+                    We may employ third-party companies and individuals to facilitate our service, provide service on our behalf, perform service-related services, or assist us in analyzing how our service is used. These third parties have access to your personal data only to perform these tasks on our behalf and are obligated not to disclose or use it for any other purpose.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">8. Children's Privacy</h2>
+                <p class="text-gray-700 mb-4">
+                    Our service does not address anyone under the age of 13. We do not knowingly collect personally identifiable information from anyone under the age of 13.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">9. Changes to This Privacy Policy</h2>
+                <p class="text-gray-700 mb-4">
+                    We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-800">10. Contact Us</h2>
+                <p class="text-gray-700 mb-4">
+                    If you have any questions about this Privacy Policy, please contact us at:
+                </p>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-700">Email: austin@mypetlink.ai</p>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %} 
