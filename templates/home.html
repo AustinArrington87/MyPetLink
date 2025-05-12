@@ -691,9 +691,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (lastVaccinationDate) {
             const lastVaccination = new Date(lastVaccinationDate);
             const today = new Date();
-            // Calculate due date: 3 years after last vaccination
+            // Calculate due date: 1 year after last vaccination
             const dueDate = new Date(lastVaccination);
-            dueDate.setFullYear(dueDate.getFullYear() + 3);
+            dueDate.setFullYear(dueDate.getFullYear() + 1);
             const msPerDay = 1000 * 60 * 60 * 24;
             const daysUntilDue = Math.ceil((dueDate - today) / msPerDay);
             if (daysUntilDue < 0) {
