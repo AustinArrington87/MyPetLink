@@ -56,6 +56,7 @@ class Pet(Base):
     weight = Column(Float)
     health_conditions = Column(Text)
     last_checkup = Column(Date)
+    last_vaccination_date = Column(Date)
     state = Column(String(2))
     city = Column(String(100))
     vet_clinic = Column(String(200))
@@ -97,6 +98,7 @@ class Pet(Base):
             'weight': self.weight,
             'health_conditions': self.health_conditions,
             'last_checkup': self.last_checkup.isoformat() if self.last_checkup else None,
+            'last_vaccination_date': self.last_vaccination_date.isoformat() if self.last_vaccination_date else None,
             'state': self.state,
             'city': self.city,
             'vet_clinic': self.vet_clinic,

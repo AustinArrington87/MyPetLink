@@ -683,6 +683,26 @@ document.addEventListener('DOMContentLoaded', function() {
     {% if active_pet %}
     loadPetFiles('{{ active_pet.id }}');
     {% endif %}
+
+    // Vaccination reminder for active pet
+    {% if active_pet and active_pet.last_vaccination_date %}
+        const lastVaccinationDate = '{{ active_pet.last_vaccination_date }}';
+        const petName = `{{ active_pet.name }}` || 'Your pet';
+        if (lastVaccinationDate) {
+            const lastVaccination = new Date(lastVaccinationDate);
+            const today = new Date();
+            // Calculate due date: 3 years after last vaccination
+            const dueDate = new Date(lastVaccination);
+            dueDate.setFullYear(dueDate.getFullYear() + 3);
+            const msPerDay = 1000 * 60 * 60 * 24;
+            const daysUntilDue = Math.ceil((dueDate - today) / msPerDay);
+            if (daysUntilDue < 0) {
+                showNotification(`${petName}'s vaccination is overdue! Please schedule a vaccination appointment soon.`, 'error');
+            } else if (daysUntilDue <= 30) {
+                showNotification(`${petName}'s vaccination is due on ${dueDate.toLocaleDateString()}. Please schedule an appointment.`, 'warning');
+            }
+        }
+    {% endif %}
 });
 </script>
 {% endblock %}
