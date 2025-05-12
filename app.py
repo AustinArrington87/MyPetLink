@@ -654,6 +654,7 @@ def update_pet_profile():
                     weight=data.get('weight'),
                     health_conditions=data.get('health_conditions', ''),
                     last_checkup=data.get('last_checkup'),
+                    last_vaccination_date=data.get('last_vaccination_date'),
                     state=data.get('state', ''),
                     city=data.get('city', ''),
                     vet_clinic=data.get('vet_clinic', ''),
@@ -711,6 +712,7 @@ def update_pet_profile():
                 pet.weight = data.get('weight', pet.weight)
                 pet.health_conditions = data.get('health_conditions', pet.health_conditions)
                 pet.last_checkup = data.get('last_checkup', pet.last_checkup)
+                pet.last_vaccination_date = data.get('last_vaccination_date', pet.last_vaccination_date)
                 pet.state = data.get('state', pet.state)
                 pet.city = data.get('city', pet.city)
                 pet.vet_clinic = data.get('vet_clinic', pet.vet_clinic)
