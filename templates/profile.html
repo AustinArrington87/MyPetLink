@@ -508,75 +508,6 @@
                 <h2 class="text-xl font-semibold mb-4 text-purple-800 flex items-center">
                     <span class="text-2xl mr-2">📍</span> Location
                 </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">State</label>
-                        <select id="state" name="state" class="input-field w-full p-2 border rounded-lg">
-                            <option value="">Select State</option>
-                            <option value="AL" {% if active_pet.state == 'AL' %}selected{% endif %}>Alabama</option>
-                            <option value="AK" {% if active_pet.state == 'AK' %}selected{% endif %}>Alaska</option>
-                            <option value="AZ" {% if active_pet.state == 'AZ' %}selected{% endif %}>Arizona</option>
-                            <option value="AR" {% if active_pet.state == 'AR' %}selected{% endif %}>Arkansas</option>
-                            <option value="CA" {% if active_pet.state == 'CA' %}selected{% endif %}>California</option>
-                            <option value="CO" {% if active_pet.state == 'CO' %}selected{% endif %}>Colorado</option>
-                            <option value="CT" {% if active_pet.state == 'CT' %}selected{% endif %}>Connecticut</option>
-                            <option value="DE" {% if active_pet.state == 'DE' %}selected{% endif %}>Delaware</option>
-                            <option value="FL" {% if active_pet.state == 'FL' %}selected{% endif %}>Florida</option>
-                            <option value="GA" {% if active_pet.state == 'GA' %}selected{% endif %}>Georgia</option>
-                            <option value="HI" {% if active_pet.state == 'HI' %}selected{% endif %}>Hawaii</option>
-                            <option value="ID" {% if active_pet.state == 'ID' %}selected{% endif %}>Idaho</option>
-                            <option value="IL" {% if active_pet.state == 'IL' %}selected{% endif %}>Illinois</option>
-                            <option value="IN" {% if active_pet.state == 'IN' %}selected{% endif %}>Indiana</option>
-                            <option value="IA" {% if active_pet.state == 'IA' %}selected{% endif %}>Iowa</option>
-                            <option value="KS" {% if active_pet.state == 'KS' %}selected{% endif %}>Kansas</option>
-                            <option value="KY" {% if active_pet.state == 'KY' %}selected{% endif %}>Kentucky</option>
-                            <option value="LA" {% if active_pet.state == 'LA' %}selected{% endif %}>Louisiana</option>
-                            <option value="ME" {% if active_pet.state == 'ME' %}selected{% endif %}>Maine</option>
-                            <option value="MD" {% if active_pet.state == 'MD' %}selected{% endif %}>Maryland</option>
-                            <option value="MA" {% if active_pet.state == 'MA' %}selected{% endif %}>Massachusetts</option>
-                            <option value="MI" {% if active_pet.state == 'MI' %}selected{% endif %}>Michigan</option>
-                            <option value="MN" {% if active_pet.state == 'MN' %}selected{% endif %}>Minnesota</option>
-                            <option value="MS" {% if active_pet.state == 'MS' %}selected{% endif %}>Mississippi</option>
-                            <option value="MO" {% if active_pet.state == 'MO' %}selected{% endif %}>Missouri</option>
-                            <option value="MT" {% if active_pet.state == 'MT' %}selected{% endif %}>Montana</option>
-                            <option value="NE" {% if active_pet.state == 'NE' %}selected{% endif %}>Nebraska</option>
-                            <option value="NV" {% if active_pet.state == 'NV' %}selected{% endif %}>Nevada</option>
-                            <option value="NH" {% if active_pet.state == 'NH' %}selected{% endif %}>New Hampshire</option>
-                            <option value="NJ" {% if active_pet.state == 'NJ' %}selected{% endif %}>New Jersey</option>
-                            <option value="NM" {% if active_pet.state == 'NM' %}selected{% endif %}>New Mexico</option>
-                            <option value="NY" {% if active_pet.state == 'NY' %}selected{% endif %}>New York</option>
-                            <option value="NC" {% if active_pet.state == 'NC' %}selected{% endif %}>North Carolina</option>
-                            <option value="ND" {% if active_pet.state == 'ND' %}selected{% endif %}>North Dakota</option>
-                            <option value="OH" {% if active_pet.state == 'OH' %}selected{% endif %}>Ohio</option>
-                            <option value="OK" {% if active_pet.state == 'OK' %}selected{% endif %}>Oklahoma</option>
-                            <option value="OR" {% if active_pet.state == 'OR' %}selected{% endif %}>Oregon</option>
-                            <option value="PA" {% if active_pet.state == 'PA' %}selected{% endif %}>Pennsylvania</option>
-                            <option value="PR" {% if active_pet.state == 'PR' %}selected{% endif %}>Puerto Rico</option>
-                            <option value="RI" {% if active_pet.state == 'RI' %}selected{% endif %}>Rhode Island</option>
-                            <option value="SC" {% if active_pet.state == 'SC' %}selected{% endif %}>South Carolina</option>
-                            <option value="SD" {% if active_pet.state == 'SD' %}selected{% endif %}>South Dakota</option>
-                            <option value="TN" {% if active_pet.state == 'TN' %}selected{% endif %}>Tennessee</option>
-                            <option value="TX" {% if active_pet.state == 'TX' %}selected{% endif %}>Texas</option>
-                            <option value="UT" {% if active_pet.state == 'UT' %}selected{% endif %}>Utah</option>
-                            <option value="VT" {% if active_pet.state == 'VT' %}selected{% endif %}>Vermont</option>
-                            <option value="VA" {% if active_pet.state == 'VA' %}selected{% endif %}>Virginia</option>
-                            <option value="WA" {% if active_pet.state == 'WA' %}selected{% endif %}>Washington</option>
-                            <option value="WV" {% if active_pet.state == 'WV' %}selected{% endif %}>West Virginia</option>
-                            <option value="WI" {% if active_pet.state == 'WI' %}selected{% endif %}>Wisconsin</option>
-                            <option value="WY" {% if active_pet.state == 'WY' %}selected{% endif %}>Wyoming</option>
-                            <option value="DC" {% if active_pet.state == 'DC' %}selected{% endif %}>District of Columbia</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">City</label>
-                        <select id="city" name="city" class="input-field w-full p-2 border rounded-lg">
-                            <option value="">Select City</option>
-                            <!-- Cities will be populated based on state selection -->
-                        </select>
-                    </div>
-                </div>
 
                 <!-- Nearby Vets Section -->
                 <div class="mt-6">
@@ -670,17 +601,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const speciesSelect = document.getElementById('petType');
     if (speciesSelect.value) {
         loadBreeds(true);
-    }
-
-    // Add event listener for state selection
-    const stateSelect = document.getElementById('state');
-    stateSelect.addEventListener('change', function() {
-        loadCities(this.value);
-    });
-
-    // If state is already selected, load the cities
-    if (stateSelect.value) {
-        loadCities(stateSelect.value);
     }
 
     // Add event listener for vaccination date change
@@ -876,8 +796,6 @@ function addNewPet() {
     document.getElementById('weight').value = '';
     document.getElementById('healthConditions').value = '';
     document.getElementById('lastCheckup').value = '';
-    document.getElementById('state').value = '';
-    document.getElementById('city').value = '';
     document.getElementById('petAvatar').src = '/static/img/pet_logo.png';
     document.getElementById('avatarPreview').src = '/static/img/pet_logo.png';
     document.getElementById('avatarUrl').value = '';
@@ -926,8 +844,6 @@ function saveProfile() {
         health_conditions: document.getElementById('healthConditions').value,
         last_checkup: document.getElementById('lastCheckup').value,
         last_vaccination_date: document.getElementById('lastVaccinationDate').value,
-        state: document.getElementById('state').value,
-        city: document.getElementById('city').value,
         avatar: document.getElementById('avatarUrl').value,
         vet_clinic: document.getElementById('vetClinic') ? document.getElementById('vetClinic').value : '',
         vet_phone: document.getElementById('vetPhone') ? document.getElementById('vetPhone').value : '',
@@ -958,39 +874,6 @@ function saveProfile() {
         alert('Failed to save profile. Please try again.');
         document.getElementById('loadingOverlay').classList.add('hidden');
     });
-}
-
-function loadCities(state) {
-    if (!state) {
-        const citySelect = document.getElementById('city');
-        citySelect.innerHTML = '<option value="">Select City</option>';
-        return;
-    }
-
-    // Show loading indicator
-    document.getElementById('loadingOverlay').classList.remove('hidden');
-    document.getElementById('loadingText').textContent = 'Loading cities...';
-
-    // Call API to get cities for the selected state
-    fetch(`/api/cities/${state}`)
-        .then(response => response.json())
-        .then(cities => {
-            const citySelect = document.getElementById('city');
-            const currentCity = citySelect.value;
-            
-            citySelect.innerHTML = '<option value="">Select City</option>' +
-                cities.map(city => {
-                    const selected = city === currentCity ? 'selected' : '';
-                    return `<option value="${city}" ${selected}>${city}</option>`;
-                }).join('');
-        })
-        .catch(error => {
-            console.error('Error loading cities:', error);
-            alert('Failed to load cities. Please try again.');
-        })
-        .finally(() => {
-            document.getElementById('loadingOverlay').classList.add('hidden');
-        });
 }
 
 function checkVaccinationDates() {
