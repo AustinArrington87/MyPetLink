@@ -524,26 +524,35 @@ def profile():
     try:
         user = db.query(User).filter(User.id == session['db_user_id']).first()
         if not user:
-            return redirect('/login')
+            return redirect(url_for('login'))
             
-        # Get user's pets
+        # Get all pets for the user
         pets = user.pets
         
-        # Get active pet
+        # Get the requested pet_id from query parameters
+        requested_pet_id = request.args.get('pet_id')
+        
+        # If a specific pet is requested, find it
         active_pet = None
-        if 'active_pet_id' in session:
-            active_pet = next((pet for pet in pets if str(pet.id) == session['active_pet_id']), None)
+        if requested_pet_id:
+            active_pet = next((pet for pet in pets if str(pet.id) == requested_pet_id), None)
+        
+        # If no specific pet requested or requested pet not found, use the first pet
         if not active_pet and pets:
             active_pet = pets[0]
             
+        # If no pets at all, set is_first_pet to True
+        is_first_pet = len(pets) == 0
+        
         return render_template('profile.html',
                              user_profile=user,
                              pets=pets,
                              active_pet=active_pet,
-                             is_first_pet=len(pets) == 0)
+                             is_first_pet=is_first_pet)
+                             
     except Exception as e:
         logger.error(f"Error in profile route: {e}")
-        return redirect('/login')
+        return redirect(url_for('home'))
     finally:
         close_db_session(db)
 

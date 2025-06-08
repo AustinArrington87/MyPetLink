@@ -991,17 +991,62 @@ function loadBreeds(isInitialLoad = false) {
 }
 
 function selectPet(petId) {
+    // Update current pet ID
     currentPetId = petId;
-    currentStep = 1;
-    document.getElementById(`step${currentStep}`).classList.remove('active');
-    document.getElementById(`step${currentStep + 1}`).classList.add('active');
+    
+    // Update active state in UI
+    document.querySelectorAll('.pet-option').forEach(option => {
+        option.classList.remove('active');
+    });
+    document.querySelector(`.pet-option[onclick="selectPet('${petId}')"]`).classList.add('active');
+    
+    // Reload the page with the selected pet
+    window.location.href = `/profile?pet_id=${petId}`;
 }
 
 function addNewPet() {
+    // Clear current pet ID to indicate new pet
     currentPetId = null;
-    currentStep = 1;
-    document.getElementById(`step${currentStep}`).classList.remove('active');
-    document.getElementById(`step${currentStep + 1}`).classList.add('active');
+    
+    // Reset form fields
+    document.getElementById('petName').value = '';
+    document.getElementById('petType').value = '';
+    document.getElementById('breedSelect').innerHTML = '<option value="">Select species first</option>';
+    document.getElementById('ageYears').value = '';
+    document.getElementById('ageMonths').value = '';
+    document.getElementById('weight').value = '';
+    document.getElementById('healthConditions').value = '';
+    document.getElementById('lastCheckup').value = '';
+    document.getElementById('lastVaccinationDate').value = '';
+    document.getElementById('vetClinic').value = '';
+    document.getElementById('vetPhone').value = '';
+    document.getElementById('vetAddress').value = '';
+    
+    // Reset avatar
+    document.getElementById('petAvatar').src = '/static/img/pet_logo.png';
+    document.getElementById('avatarUrl').value = '';
+    
+    // Show first step
+    document.querySelectorAll('.step').forEach(step => {
+        step.classList.remove('active');
+    });
+    document.getElementById('step1').classList.add('active');
+    
+    // Update UI to show we're adding a new pet
+    document.querySelector('.text-center h1').textContent = '🐾 Add New Pet 🐾';
+    document.querySelector('.text-center p').textContent = 'Tell us about your new furry (or scaly!) friend';
+    
+    // Show all steps
+    document.getElementById('basicInfoStep').classList.remove('hidden');
+    document.getElementById('avatarStep').classList.remove('hidden');
+    document.getElementById('healthStep').classList.remove('hidden');
+    document.getElementById('locationStep').classList.remove('hidden');
+    
+    // Update save button text
+    const saveButton = document.querySelector('button[onclick="saveProfile()"]');
+    if (saveButton) {
+        saveButton.textContent = '🐾 Save New Pet';
+    }
 }
 
 function saveProfile() {
