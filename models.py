@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, Boolean, ForeignKey, DateTime, Date, Text, LargeBinary, TIMESTAMP, JSON
+from sqlalchemy import Column, String, Integer, Float, Boolean, ForeignKey, DateTime, Date, Text, LargeBinary, TIMESTAMP, JSON, ARRAY
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -24,6 +24,11 @@ class User(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
     is_admin = Column(Boolean, default=False)
+    avatar_url = Column(String(500))
+    bio = Column(Text)
+    city = Column(String(100))
+    us_state = Column(String(2))
+    looking_for = Column(ARRAY(String))
 
     # Relationships
     pets = relationship("Pet", back_populates="user", cascade="all, delete-orphan")
