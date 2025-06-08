@@ -23,7 +23,7 @@ import io
 import time
 import pyheif
 import asyncio
-from functools import partial, lru_cache
+from functools import partial, lru_cache, wraps
 import base64
 from email.mime.text import MIMEText
 from google.oauth2 import service_account
@@ -33,6 +33,8 @@ import requests
 from authlib.integrations.flask_client import OAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 from jose import jwt
+import tempfile
+from storage import S3Storage
 
 # Configure logging
 logging.basicConfig(
@@ -220,6 +222,19 @@ def callback_handling():
         
         # Store user ID in session for database operations (convert UUID to string)
         session['db_user_id'] = str(user.id)
+        
+        # Update session with user profile data
+        session['user_name'] = user.name
+        session['user_email'] = user.email
+        session['user_city'] = user.city
+        session['user_state'] = user.us_state
+        session['user_bio'] = user.bio
+        session['user_looking_for'] = user.looking_for
+        session['user_avatar_url'] = user.avatar_url
+        
+        # Set is_authenticated flag
+        session['is_authenticated'] = True
+        
     except Exception as e:
         db.rollback()
         logger.error(f"Error storing user in database: {e}")
@@ -252,13 +267,22 @@ def logout():
     logout_url = auth0.api_base_url + '/v2/logout?' + '&'.join([f'{key}={urllib.parse.quote(value)}' for key, value in params.items()])
     return redirect(logout_url)
 
-def requires_auth(f):
-    """Decorator to check if user is authenticated"""
+def requires_auth_api(f):
+    """Decorator to check if user is authenticated for API routes"""
+    @wraps(f)
     def decorated(*args, **kwargs):
-        if 'profile' not in session:
+        if 'is_authenticated' not in session or not session['is_authenticated']:
+            return jsonify({'error': 'user not authenticated'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+def requires_auth_web(f):
+    """Decorator to check if user is authenticated for web routes"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'is_authenticated' not in session or not session['is_authenticated']:
             return redirect('/login')
         return f(*args, **kwargs)
-    decorated.__name__ = f.__name__
     return decorated
 
 @app.route('/')
@@ -333,7 +357,7 @@ def home():
                           active_pet=active_pet)
 
 @app.route('/upload', methods=['POST'])
-@requires_auth
+@requires_auth_api
 def upload_file():
     db = None
     try:
@@ -490,76 +514,41 @@ def upload_file():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/profile')
-@requires_auth
+@requires_auth_web
 def profile():
     # Get user profile data
-    user_profile = session.get('profile', {})
-    user_id = session.get('db_user_id')
-    
-    if not user_id:
-        return redirect('/login')  # Redirect if no user ID in session
-    
-    from models import Pet
+    from models import User
     from database import get_db_session, close_db_session
-    import uuid
-    
-    # Get pets and active pet from database
-    pets = []
-    active_pet = {}
-    is_first_pet = True
-    
-    # Convert string user_id to UUID for database query
-    try:
-        user_id_uuid = uuid.UUID(user_id)
-    except ValueError:
-        logger.error(f"Invalid UUID format in session.db_user_id: {user_id}")
-        return redirect('/logout')  # Logout to reset session if ID is invalid
     
     db = get_db_session()
     try:
-        # Get all pets for the user
-        db_pets = db.query(Pet).filter(Pet.user_id == user_id_uuid).all()
-        pets = [pet.to_dict() for pet in db_pets]
-        is_first_pet = len(pets) == 0
+        user = db.query(User).filter(User.id == session['db_user_id']).first()
+        if not user:
+            return redirect('/login')
+            
+        # Get user's pets
+        pets = user.pets
         
         # Get active pet
-        if not is_first_pet:
-            # First try to get pet marked as active in DB
-            active_db_pet = db.query(Pet).filter(Pet.user_id == user_id_uuid, Pet.is_active == True).first()
+        active_pet = None
+        if 'active_pet_id' in session:
+            active_pet = next((pet for pet in pets if str(pet.id) == session['active_pet_id']), None)
+        if not active_pet and pets:
+            active_pet = pets[0]
             
-            # If no active pet in DB but we have pets, mark the first one as active
-            if not active_db_pet and db_pets:
-                active_db_pet = db_pets[0]
-                # Set all pets to inactive
-                db.query(Pet).filter(Pet.user_id == user_id_uuid).update({"is_active": False})
-                # Set first pet to active
-                active_db_pet.is_active = True
-                db.commit()
-            
-            if active_db_pet:
-                active_pet = active_db_pet.to_dict()
-                session['active_pet_id'] = active_pet['id']  # ID is already a string from to_dict()
+        return render_template('profile.html',
+                             user_profile=user,
+                             pets=pets,
+                             active_pet=active_pet,
+                             is_first_pet=len(pets) == 0)
     except Exception as e:
-        logger.error(f"Error getting pets from database: {e}")
+        logger.error(f"Error in profile route: {e}")
+        return redirect('/login')
     finally:
         close_db_session(db)
-    
-    # For backward compatibility, also check old pet_profile format
-    if is_first_pet and session.get('pet_profile'):
-        old_pet = session.get('pet_profile', {})
-        if old_pet:
-            # We'll handle this migration when saving the pet profile
-            is_migrating_old_pet = True
-            active_pet = old_pet
-                
-    return render_template('profile.html', 
-                          active_pet=active_pet,
-                          pets=pets,
-                          is_first_pet=is_first_pet,
-                          user_profile=user_profile)
 
 @app.route('/update_pet_profile', methods=['POST'])
-@requires_auth
+@requires_auth_api
 def update_pet_profile():
     try:
         # Get user ID from session
@@ -814,7 +803,7 @@ def update_pet_profile():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/get_pets', methods=['GET'])
-@requires_auth
+@requires_auth_api
 def get_pets():
     try:
         user_id = session.get('db_user_id')
@@ -847,7 +836,7 @@ def get_pets():
         return jsonify({'success': False, 'error': str(e)}), 500
         
 @app.route('/get_pet_files/<pet_id>', methods=['GET'])
-@requires_auth
+@requires_auth_api
 def get_pet_files(pet_id):
     try:
         user_id = session.get('db_user_id')
@@ -903,7 +892,7 @@ def get_pet_files(pet_id):
         return jsonify({'success': False, 'error': str(e)}), 500
         
 @app.route('/set_active_pet/<pet_id>', methods=['POST'])
-@requires_auth
+@requires_auth_api
 def set_active_pet(pet_id):
     try:
         user_id = session.get('db_user_id')
@@ -952,7 +941,7 @@ def set_active_pet(pet_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/generate_pet_avatar', methods=['POST'])
-@requires_auth
+@requires_auth_api
 def generate_pet_avatar():
     try:
         data = request.json
@@ -1387,7 +1376,7 @@ def get_provider_url():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/analyze_poop', methods=['POST'])
-@requires_auth
+@requires_auth_api
 def analyze_poop():
     try:
         if 'image' not in request.files:
@@ -2040,6 +2029,108 @@ def privacy():
 @app.route('/data-use')
 def data_use():
     return render_template('data_use.html')
+
+@app.route('/update_user_profile', methods=['POST'])
+@requires_auth_api
+def update_user_profile():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Get user from database
+        from models import User
+        from database import get_db_session, close_db_session
+        
+        db = get_db_session()
+        try:
+            user = db.query(User).filter(User.id == session['db_user_id']).first()
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Update user fields
+            if 'name' in data:
+                name_parts = data['name'].split(' ', 1)
+                user.first_name = name_parts[0]
+                user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+            if 'email' in data:
+                user.email = data['email']
+            if 'bio' in data:
+                user.bio = data['bio']
+            if 'city' in data:
+                user.city = data['city']
+            if 'state' in data:
+                user.us_state = data['state']
+            if 'looking_for' in data:
+                user.looking_for = data['looking_for']
+
+            # Handle avatar if provided
+            if 'avatar' in data and data['avatar']:
+                try:
+                    # Extract base64 data
+                    avatar_data = data['avatar'].split(',')[1]
+                    avatar_bytes = base64.b64decode(avatar_data)
+                    
+                    # Create temporary file
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                        temp_file.write(avatar_bytes)
+                        temp_path = temp_file.name
+                    
+                    # Upload to S3
+                    s3 = S3Storage()
+                    avatar_url = s3.upload_file(
+                        temp_path,
+                        str(user.id),  # pet_id parameter
+                        'user',        # file_type parameter
+                        'avatar',      # file_category parameter
+                        'avatar.png'   # filename parameter
+                    )
+                    
+                    # Update user's avatar URL
+                    user.avatar_url = avatar_url
+                    
+                    # Clean up temp file
+                    os.unlink(temp_path)
+                except Exception as e:
+                    logger.error(f"Error processing avatar: {e}")
+                    return jsonify({'error': 'Failed to process avatar'}), 500
+
+            # Commit changes
+            db.commit()
+            
+            # Update session data
+            session['user_name'] = user.name
+            session['user_email'] = user.email
+            session['user_city'] = user.city
+            session['user_state'] = user.us_state
+            session['user_bio'] = user.bio
+            session['user_looking_for'] = user.looking_for
+            session['user_avatar_url'] = user.avatar_url
+            
+            return jsonify({
+                'success': True,
+                'message': 'Profile updated successfully',
+                'user': {
+                    'name': user.name,
+                    'email': user.email,
+                    'city': user.city,
+                    'state': user.us_state,
+                    'bio': user.bio,
+                    'looking_for': user.looking_for,
+                    'avatar_url': user.avatar_url
+                }
+            })
+            
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Database error in update_user_profile: {e}")
+            return jsonify({'error': 'Database error occurred'}), 500
+        finally:
+            close_db_session(db)
+            
+    except Exception as e:
+        logger.error(f"Error in update_user_profile: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001, use_reloader=True)

@@ -56,12 +56,17 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         position: relative;
         margin: 0 auto 1rem auto;
+        background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
     }
 
     .avatar-container img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+    }
+
+    .avatar-container img.default-avatar {
+        opacity: 0;
     }
 
     .avatar-overlay {
@@ -243,6 +248,32 @@
     .pulse {
         animation: pulse 2s infinite;
     }
+
+    .human-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(255, 159, 64, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(255, 159, 64, 0.05) 0%, transparent 50%);
+    }
+
+    .tag {
+        display: inline-block;
+        background-color: #f3f4f6;
+        color: #4b5563;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        margin: 0.25rem;
+    }
+
+    .tag:hover {
+        background-color: #e5e7eb;
+    }
+
+    .default-avatar {
+        background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+        object-fit: cover;
+    }
 </style>
 
 <!-- Notification Container (always present) -->
@@ -269,6 +300,134 @@
 </div>
 
 <div class="max-w-4xl mx-auto mt-20 px-4">
+    <!-- Human Profile Section -->
+    <div class="human-card rounded-2xl p-6 shadow-lg border-2 border-orange-100 transform transition-transform hover:scale-[1.01] mb-8">
+        <div class="flex items-center mb-4">
+            <span class="text-2xl mr-2">👤</span>
+            <h2 class="text-xl font-semibold text-orange-800">Your Profile</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Left Column: Avatar -->
+            <div class="text-center">
+                <div class="avatar-container mx-auto mb-4" style="width: 150px; height: 150px;">
+                    <img id="userAvatar" 
+                         src="{{ user_profile.avatar_url if user_profile.avatar_url else '/static/img/default_avatar.png' }}" 
+                         alt="User Avatar" 
+                         onerror="this.onerror=null; this.src='/static/img/default_avatar.png'; this.classList.add('default-avatar')"
+                         class="{{ 'default-avatar' if not user_profile.avatar_url else '' }}">
+                    <div class="avatar-overlay" onclick="openUserAvatarOptions()">
+                        <button class="bg-white text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                            Change
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="userAvatarUpload" class="hidden" accept="image/*">
+            </div>
+
+            <!-- Middle Column: Basic Info -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-1">Name</label>
+                    <input type="text" id="userName" value="{{ user_profile.name if user_profile.name else '' }}"
+                           class="w-full px-4 py-2 rounded-xl border-2 border-orange-100 focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50 transition-colors"
+                           placeholder="Your name">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-1">Email</label>
+                    <input type="email" id="userEmail" value="{{ user_profile.email if user_profile.email else '' }}"
+                           class="w-full px-4 py-2 rounded-xl border-2 border-orange-100 focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50 transition-colors"
+                           placeholder="Your email">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-1">State</label>
+                        <select id="userState" 
+                                class="w-full px-4 py-2 rounded-xl border-2 border-orange-100 focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50 transition-colors"
+                                onchange="updateCityOptions()">
+                            <option value="">Select state</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-1">City</label>
+                        <select id="userCity" 
+                                class="w-full px-4 py-2 rounded-xl border-2 border-orange-100 focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50 transition-colors">
+                            <option value="">Select city</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Bio and Looking For -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-1">Bio</label>
+                    <textarea id="userBio" rows="3"
+                              class="w-full px-4 py-2 rounded-xl border-2 border-orange-100 focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50 transition-colors"
+                              placeholder="Tell us about yourself">{{ user_profile.bio if user_profile.bio else '' }}</textarea>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-1">Looking For</label>
+                    <div class="relative">
+                        <button type="button" 
+                                onclick="toggleLookingForDropdown()"
+                                class="w-full px-4 py-2 rounded-xl border-2 border-orange-100 focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50 transition-colors text-left flex justify-between items-center">
+                            <span id="lookingForDisplay">Select options</span>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="lookingForDropdown" class="hidden absolute z-10 w-full mt-1 bg-white rounded-xl border-2 border-orange-100 shadow-lg">
+                            <div class="p-2 space-y-1">
+                                <label class="flex items-center space-x-2 p-2 hover:bg-orange-50 rounded-lg cursor-pointer">
+                                    <input type="checkbox" value="Pet Adoption" class="form-checkbox text-orange-500">
+                                    <span>Pet Adoption</span>
+                                </label>
+                                <label class="flex items-center space-x-2 p-2 hover:bg-orange-50 rounded-lg cursor-pointer">
+                                    <input type="checkbox" value="Play Dates" class="form-checkbox text-orange-500">
+                                    <span>Play Dates</span>
+                                </label>
+                                <label class="flex items-center space-x-2 p-2 hover:bg-orange-50 rounded-lg cursor-pointer">
+                                    <input type="checkbox" value="Pet Events" class="form-checkbox text-orange-500">
+                                    <span>Pet Events</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pet Overview -->
+        <div class="mt-6 pt-6 border-t border-orange-100">
+            <h3 class="text-lg font-medium text-orange-800 mb-4">Pet Overview</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for pet in pets %}
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-orange-100">
+                    <div class="flex items-center space-x-3">
+                        <img src="{{ pet.avatar if pet.avatar and pet.avatar.startswith('/') else pet.avatar if pet.avatar else '/static/img/pet_logo.png' }}" 
+                             alt="{{ pet.name }}" 
+                             class="w-12 h-12 rounded-full object-cover"
+                             onerror="this.src='/static/img/pet_logo.png'">
+                        <div>
+                            <h4 class="font-medium text-gray-800">{{ pet.name }}</h4>
+                            <p class="text-sm text-gray-500">{{ pet.species|title }} • {{ pet.breed }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="flex justify-end mt-6">
+            <button onclick="saveUserProfile()" 
+                    class="save-button text-white px-8 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:bg-blue-600">
+                Save Profile
+            </button>
+        </div>
+    </div>
+
+    <!-- Existing Pet Profile Section -->
     <div class="text-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800">🐾 Pet Profile 🐾</h1>
         <p class="text-gray-600 mt-2">
@@ -562,13 +721,13 @@
         <div class="flex flex-col space-y-4">
             <!--
             <button onclick="generateAvatar()" 
-                    class="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transform transition-all hover:scale-105">
+                    class="bg-purple-600 text-white px-6 py-3 rounded-full hover:bg-purple-700 transform transition-all hover:scale-105">
                 🪄 Generate with AI
             </button>
             -->
             
             <button onclick="uploadAvatar()" 
-                    class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transform transition-all hover:scale-105">
+                    class="bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transform transition-all hover:scale-105 shadow-md mx-2">
                 📤 Upload Photo
             </button>
         </div>
@@ -588,27 +747,174 @@
     </div>
 </div>
 
+<!-- User Avatar Modal -->
+<div id="userAvatarModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 space-y-6">
+        <h3 class="text-xl font-semibold text-center">Choose Avatar Option</h3>
+        
+        <div class="flex flex-col space-y-4">
+            <button onclick="uploadUserAvatar()" 
+                    class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transform transition-all hover:scale-105">
+                📤 Upload Photo
+            </button>
+        </div>
+        
+        <button onclick="closeUserAvatarModal()" 
+                class="w-full border border-gray-300 text-gray-600 px-6 py-3 rounded-xl hover:bg-gray-100">
+            Cancel
+        </button>
+    </div>
+</div>
+
 <script>
 let currentStep = 1;
 let currentPetId = "{{ active_pet.id if active_pet else '' }}";
 let isFirstPet = {% if is_first_pet %}true{% else %}false{% endif %};
 
-// Initial setup
-document.addEventListener('DOMContentLoaded', function() {
-    checkVaccinationDates(); // Ensure this runs on page load
+// User Profile Functions
+let lookingForTags = new Set({{ user_profile.looking_for|tojson if user_profile.looking_for else '[]' }});
 
-    // If species is already selected, load the breeds
-    const speciesSelect = document.getElementById('petType');
-    if (speciesSelect.value) {
-        loadBreeds(true);
+// Add these new functions for state/city handling
+let statesAndCities = {};
+
+async function loadStatesAndCities() {
+    try {
+        const response = await fetch('/static/US_States_and_Cities.json');
+        statesAndCities = await response.json();
+        
+        // Populate state dropdown
+        const stateSelect = document.getElementById('userState');
+        const states = Object.keys(statesAndCities).sort();
+        
+        states.forEach(state => {
+            const option = document.createElement('option');
+            option.value = state;
+            option.textContent = state;
+            stateSelect.appendChild(option);
+        });
+
+        // Set initial state if exists
+        const currentState = "{{ user_profile.us_state if user_profile.us_state else '' }}";
+        if (currentState) {
+            stateSelect.value = currentState;
+            updateCityOptions();
+        }
+    } catch (error) {
+        console.error('Error loading states and cities:', error);
     }
+}
 
-    // Add event listener for vaccination date change
-    const vaccInput = document.getElementById('lastVaccinationDate');
-    if (vaccInput) {
-        vaccInput.addEventListener('change', checkVaccinationDates);
+function updateCityOptions() {
+    const stateSelect = document.getElementById('userState');
+    const citySelect = document.getElementById('userCity');
+    const selectedState = stateSelect.value;
+    
+    // Clear existing options
+    citySelect.innerHTML = '<option value="">Select city</option>';
+    
+    if (selectedState && statesAndCities[selectedState]) {
+        const cities = statesAndCities[selectedState].sort();
+        cities.forEach(city => {
+            const option = document.createElement('option');
+            option.value = city;
+            option.textContent = city;
+            citySelect.appendChild(option);
+        });
+
+        // Set initial city if exists
+        const currentCity = "{{ user_profile.city if user_profile.city else '' }}";
+        if (currentCity) {
+            citySelect.value = currentCity;
+        }
+    }
+}
+
+// Looking For dropdown functions
+function toggleLookingForDropdown() {
+    const dropdown = document.getElementById('lookingForDropdown');
+    dropdown.classList.toggle('hidden');
+}
+
+function updateLookingForDisplay() {
+    const checkboxes = document.querySelectorAll('#lookingForDropdown input[type="checkbox"]:checked');
+    const display = document.getElementById('lookingForDisplay');
+    
+    if (checkboxes.length === 0) {
+        display.textContent = 'Select options';
+    } else {
+        display.textContent = `${checkboxes.length} selected`;
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('lookingForDropdown');
+    const button = document.querySelector('button[onclick="toggleLookingForDropdown()"]');
+    
+    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+        dropdown.classList.add('hidden');
     }
 });
+
+// Initialize looking for checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    const lookingFor = {{ user_profile.looking_for|tojson if user_profile.looking_for else '[]' }};
+    const checkboxes = document.querySelectorAll('#lookingForDropdown input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        if (lookingFor.includes(checkbox.value)) {
+            checkbox.checked = true;
+        }
+        
+        checkbox.addEventListener('change', updateLookingForDisplay);
+    });
+    
+    updateLookingForDisplay();
+    loadStatesAndCities();
+});
+
+// Update saveUserProfile function to include state
+function saveUserProfile() {
+    const name = document.getElementById('userName').value;
+    const email = document.getElementById('userEmail').value;
+    const bio = document.getElementById('userBio').value;
+    const state = document.getElementById('userState').value;
+    const city = document.getElementById('userCity').value;
+    
+    // Get selected looking for options
+    const lookingFor = Array.from(document.querySelectorAll('#lookingForDropdown input[type="checkbox"]:checked'))
+        .map(checkbox => checkbox.value);
+    
+    const avatar = document.getElementById('userAvatar').src;
+    
+    fetch('/update_user_profile', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name,
+            email,
+            bio,
+            state,
+            city,
+            looking_for: lookingFor,
+            avatar: avatar
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Profile updated successfully!', 'success');
+        } else {
+            showNotification(data.error || 'Failed to update profile', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to update profile', 'error');
+    });
+}
 
 function nextStep(step) {
     // Validate current step
@@ -635,300 +941,109 @@ function nextStep(step) {
     
     // Hide current step
     document.getElementById(`step${step}`).classList.remove('active');
-    document.getElementById(`step${step}`).classList.add('completed');
-    
-    if (step === 1) {
-        document.getElementById('basicInfoStep').classList.add('hidden');
-        document.getElementById('avatarStep').classList.remove('hidden');
-    } else if (step === 2) {
-        document.getElementById('avatarStep').classList.add('hidden');
-        document.getElementById('healthStep').classList.remove('hidden');
-    }
-    
-    // Show next step
     document.getElementById(`step${step + 1}`).classList.add('active');
-    currentStep = step + 1;
 }
 
 function prevStep(step) {
     // Hide current step
     document.getElementById(`step${step}`).classList.remove('active');
-    
-    // Show previous step
     document.getElementById(`step${step - 1}`).classList.add('active');
-    document.getElementById(`step${step - 1}`).classList.remove('completed');
-    
-    if (step === 2) {
-        document.getElementById('avatarStep').classList.add('hidden');
-        document.getElementById('basicInfoStep').classList.remove('hidden');
-    } else if (step === 3) {
-        document.getElementById('healthStep').classList.add('hidden');
-        document.getElementById('avatarStep').classList.remove('hidden');
-    }
-    
-    currentStep = step - 1;
 }
 
-function loadBreeds(keepExistingSelection = false) {
-    const petType = document.getElementById('petType').value;
-    if (!petType) return;
-    
-    const currentBreed = keepExistingSelection ? 
-        document.getElementById('breedSelect').value : '';
-    
-    fetch(`/api/breeds/${petType}`)
+function checkVaccinationDates() {
+    const lastVaccinationDate = document.getElementById('lastVaccinationDate').value;
+    const today = new Date().toISOString().split('T')[0];
+    const vaccinationDate = new Date(lastVaccinationDate);
+    const age = Math.floor((new Date() - vaccinationDate) / (1000 * 60 * 60 * 24 * 365));
+
+    if (age < 0) {
+        alert('Invalid vaccination date');
+        document.getElementById('lastVaccinationDate').value = today;
+    }
+}
+
+function loadBreeds(isInitialLoad = false) {
+    const species = document.getElementById('petType').value;
+    if (!species) return;
+
+    const breedSelect = document.getElementById('breedSelect');
+    breedSelect.innerHTML = '';
+
+    fetch(`/breeds?species=${species}`)
         .then(response => response.json())
-        .then(breeds => {
-            const breedSelect = document.getElementById('breedSelect');
-            breedSelect.innerHTML = '<option value="">Select breed</option>' +
-                breeds.map(breed => {
-                    const selected = breed === "{{ active_pet.breed if active_pet else '' }}" || breed === currentBreed ? 'selected' : '';
-                    return `<option value="${breed}" ${selected}>${breed}</option>`;
-                }).join('');
+        .then(data => {
+            if (data.length > 0) {
+                breedSelect.innerHTML = '<option value="">Select breed</option>';
+                data.forEach(breed => {
+                    const option = document.createElement('option');
+                    option.value = breed;
+                    option.textContent = breed;
+                    breedSelect.appendChild(option);
+                });
+            } else {
+                breedSelect.innerHTML = '<option value="">No breeds found</option>';
+            }
         })
-        .catch(error => console.error('Error loading breeds:', error));
+        .catch(error => {
+            console.error('Error loading breeds:', error);
+            breedSelect.innerHTML = '<option value="">Error loading breeds</option>';
+        });
+}
+
+function selectPet(petId) {
+    currentPetId = petId;
+    currentStep = 1;
+    document.getElementById(`step${currentStep}`).classList.remove('active');
+    document.getElementById(`step${currentStep + 1}`).classList.add('active');
+}
+
+function addNewPet() {
+    currentPetId = null;
+    currentStep = 1;
+    document.getElementById(`step${currentStep}`).classList.remove('active');
+    document.getElementById(`step${currentStep + 1}`).classList.add('active');
+}
+
+function saveProfile() {
+    // Implementation of saveProfile function
 }
 
 function openAvatarOptions() {
-    document.getElementById('avatarModal').classList.remove('hidden');
+    // Implementation of openAvatarOptions function
 }
 
 function closeAvatarModal() {
-    document.getElementById('avatarModal').classList.add('hidden');
+    // Implementation of closeAvatarModal function
 }
 
 function uploadAvatar() {
-    closeAvatarModal();
-    document.getElementById('avatarUpload').click();
+    // Implementation of uploadAvatar function
 }
 
-document.getElementById('avatarUpload').addEventListener('change', function(e) {
+function openUserAvatarOptions() {
+    document.getElementById('userAvatarModal').classList.remove('hidden');
+}
+
+function closeUserAvatarModal() {
+    document.getElementById('userAvatarModal').classList.add('hidden');
+}
+
+function uploadUserAvatar() {
+    closeUserAvatarModal();
+    document.getElementById('userAvatarUpload').click();
+}
+
+document.getElementById('userAvatarUpload').addEventListener('change', function(e) {
     if (e.target.files && e.target.files[0]) {
         const reader = new FileReader();
         
         reader.onload = function(e) {
-            document.getElementById('petAvatar').src = e.target.result;
-            document.getElementById('avatarPreview').src = e.target.result;
-            document.getElementById('avatarUrl').value = e.target.result;
+            document.getElementById('userAvatar').src = e.target.result;
+            document.getElementById('userAvatar').classList.remove('default-avatar');
         }
         
         reader.readAsDataURL(e.target.files[0]);
     }
 });
-
-function generateAvatar() {
-    closeAvatarModal();
-    /*
-    const petName = document.getElementById('petName').value;
-    const species = document.getElementById('petType').value;
-    const breed = document.getElementById('breedSelect').value;
-    
-    if (!petName || !species) {
-        alert('Please enter your pet\'s name and species first');
-        return;
-    }
-    
-    // Show loading indicator
-    document.getElementById('loadingOverlay').classList.remove('hidden');
-    document.getElementById('loadingText').textContent = 'Generating avatar...';
-    
-    // Call API to generate avatar
-    fetch('/generate_pet_avatar', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            pet_name: petName,
-            species: species,
-            breed: breed
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('petAvatar').src = data.avatar_url;
-            document.getElementById('avatarPreview').src = data.avatar_url;
-            document.getElementById('avatarUrl').value = data.avatar_url;
-        } else {
-            alert(data.error || 'Failed to generate avatar');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to generate avatar. Please try again.');
-    })
-    .finally(() => {
-        // Hide loading indicator
-        document.getElementById('loadingOverlay').classList.add('hidden');
-    });
-    */
-}
-
-function selectPet(petId) {
-    document.getElementById('loadingOverlay').classList.remove('hidden');
-    document.getElementById('loadingText').textContent = 'Loading pet profile...';
-    
-    fetch(`/set_active_pet/${petId}`, {
-        method: 'POST'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            window.location.reload();
-        } else {
-            alert(data.error || 'Failed to select pet');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('loadingOverlay').classList.add('hidden');
-    });
-}
-
-function addNewPet() {
-    currentPetId = '';
-    document.getElementById('petName').value = '';
-    document.getElementById('petType').value = '';
-    document.getElementById('breedSelect').innerHTML = '<option value="">Select species first</option>';
-    document.getElementById('ageYears').value = '';
-    document.getElementById('ageMonths').value = '';
-    document.getElementById('weight').value = '';
-    document.getElementById('healthConditions').value = '';
-    document.getElementById('lastCheckup').value = '';
-    document.getElementById('petAvatar').src = '/static/img/pet_logo.png';
-    document.getElementById('avatarPreview').src = '/static/img/pet_logo.png';
-    document.getElementById('avatarUrl').value = '';
-    document.getElementById('petId').value = '';
-    
-    // Clear vet clinic info if the elements exist
-    if (document.getElementById('vetClinic')) document.getElementById('vetClinic').value = '';
-    if (document.getElementById('vetPhone')) document.getElementById('vetPhone').value = '';
-    if (document.getElementById('vetAddress')) document.getElementById('vetAddress').value = '';
-    
-    // Update the UI to show pets are now being edited
-    const petOptions = document.querySelectorAll('.pet-option');
-    petOptions.forEach(option => {
-        option.classList.remove('active');
-    });
-}
-
-function saveProfile() {
-    const petName = document.getElementById('petName').value;
-    const species = document.getElementById('petType').value;
-    
-    if (!petName) {
-        alert('Please enter your pet\'s name');
-        return;
-    }
-    
-    if (!species) {
-        alert('Please select your pet\'s species');
-        return;
-    }
-    
-    // Show loading indicator
-    document.getElementById('loadingOverlay').classList.remove('hidden');
-    document.getElementById('loadingText').textContent = 'Saving pet profile...';
-    
-    const data = {
-        pet_id: document.getElementById('petId').value,
-        pet_name: petName,
-        species: species,
-        breed: document.getElementById('breedSelect').value,
-        age: {
-            years: document.getElementById('ageYears').value,
-            months: document.getElementById('ageMonths').value
-        },
-        weight: document.getElementById('weight').value,
-        health_conditions: document.getElementById('healthConditions').value,
-        last_checkup: document.getElementById('lastCheckup').value,
-        last_vaccination_date: document.getElementById('lastVaccinationDate').value,
-        avatar: document.getElementById('avatarUrl').value,
-        vet_clinic: document.getElementById('vetClinic') ? document.getElementById('vetClinic').value : '',
-        vet_phone: document.getElementById('vetPhone') ? document.getElementById('vetPhone').value : '',
-        vet_address: document.getElementById('vetAddress') ? document.getElementById('vetAddress').value : ''
-    };
-
-    fetch('/update_pet_profile', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (isFirstPet || data.is_first_pet) {
-                window.location.href = '/';
-            } else {
-                window.location.reload();
-            }
-        } else {
-            throw new Error(data.error || 'Failed to save profile');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to save profile. Please try again.');
-        document.getElementById('loadingOverlay').classList.add('hidden');
-    });
-}
-
-function checkVaccinationDates() {
-    const lastVaccinationDate = document.getElementById('lastVaccinationDate').value;
-    if (!lastVaccinationDate) return;
-
-    const lastVaccination = new Date(lastVaccinationDate);
-    const today = new Date();
-    // Calculate due date: 3 years after last vaccination
-    const dueDate = new Date(lastVaccination);
-    dueDate.setFullYear(dueDate.getFullYear() + 3);
-
-    // Calculate days until due
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const daysUntilDue = Math.ceil((dueDate - today) / msPerDay);
-
-    const petName = document.getElementById('petName').value || 'Your pet';
-
-    if (daysUntilDue < 0) {
-        // Past due
-        showNotification(`${petName}'s vaccination is overdue! Please schedule a vaccination appointment soon.`, 'error');
-    } else if (daysUntilDue <= 30) {
-        // Due within 30 days
-        showNotification(`${petName}'s vaccination is due on ${dueDate.toLocaleDateString()}. Please schedule an appointment.`, 'warning');
-    }
-}
-
-function showNotification(message, type = 'info') {
-    const notificationContainer = document.getElementById('notificationContainer');
-    if (!notificationContainer) return;
-
-    const notification = document.createElement('div');
-    notification.className = `pointer-events-auto p-4 mb-2 rounded-lg shadow-lg flex items-center w-full max-w-md bg-white border-l-4 ${
-        type === 'error' ? 'border-red-500' :
-        type === 'warning' ? 'border-yellow-500' :
-        'border-blue-500'
-    }`;
-    notification.innerHTML = `
-        <div class="flex-1 text-sm font-medium ${
-            type === 'error' ? 'text-red-700' :
-            type === 'warning' ? 'text-yellow-700' :
-            'text-blue-700'
-        }">${message}</div>
-        <button onclick="this.parentElement.remove()" class="ml-4 text-gray-400 hover:text-gray-700 focus:outline-none" style="pointer-events:auto;">
-            <span class="sr-only">Close</span>
-            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-            </svg>
-        </button>
-    `;
-    notificationContainer.appendChild(notification);
-    // Auto-dismiss after 10 seconds
-    setTimeout(() => {
-        notification.remove();
-    }, 10000);
-}
 </script>
 {% endblock %}
