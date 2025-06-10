@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Matches{% endblock %}
+
+{% block content %}
+<style>
+    .match-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(72, 187, 120, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(72, 187, 120, 0.05) 0%, transparent 50%);
+    }
+
+    .match-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .match-pet-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .match-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+
+    .match-button {
+        padding: 0.75rem 1.5rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .match-button.accept {
+        background-color: #10B981;
+        color: white;
+    }
+
+    .match-button.accept:hover {
+        background-color: #059669;
+        transform: scale(1.05);
+    }
+
+    .match-button.skip {
+        background-color: #F3F4F6;
+        color: #4B5563;
+    }
+
+    .match-button.skip:hover {
+        background-color: #E5E7EB;
+        transform: scale(1.05);
+    }
+
+    .match-pets {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        justify-content: center;
+    }
+
+    .match-pet {
+        text-align: center;
+    }
+
+    .match-pet-name {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin-top: 0.25rem;
+    }
+</style>
+
+<div class="max-w-7xl mx-auto mt-20 px-4">
+    <div class="match-card rounded-2xl p-6 shadow-lg">
+        <h2 class="text-xl font-semibold mb-6 text-green-800 flex items-center">
+            <span class="text-2xl mr-2">💝</span> Join the MyPetLink Community
+        </h2>
+        
+        <div id="matches-container" class="space-y-6">
+            <!-- Matches will be populated here -->
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">🔍</div>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">Finding Matches...</h3>
+                <p class="text-gray-500">We're looking for pet parents near you</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentMatch = null;
+
+// Load potential matches
+function loadMatches() {
+    fetch('/api/matches')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('matches-container');
+            
+            if (data.matches.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="text-6xl mb-4">🐈</div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-2">No Matches Found</h3>
+                        <p class="text-gray-500">We couldn't find any pet parents matching your preferences</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Display the first match
+            displayMatch(data.matches[0]);
+        })
+        .catch(error => {
+            console.error('Error loading matches:', error);
+            showNotification('Failed to load matches', 'error');
+        });
+}
+
+// Display a match
+function displayMatch(match) {
+    currentMatch = match;
+    const container = document.getElementById('matches-container');
+    let statusHtml = '';
+    let acceptDisabled = false;
+    let acceptText = '<span>💝</span> Accept';
+    let cardClass = '';
+    if (match.status === 'waiting') {
+        statusHtml = `
+            <div class="flex flex-col items-center justify-center my-6">
+                <div class="text-5xl mb-2 animate-bounce">⏳</div>
+                <div class="text-yellow-700 font-bold text-lg mb-2">You've accepted!</div>
+                <div class="text-yellow-600 font-semibold">Waiting for the other user to accept…</div>
+            </div>
+        `;
+        acceptDisabled = true;
+        acceptText = '<span>✅</span> Accepted';
+        cardClass = 'opacity-80';
+    }
+    container.innerHTML = `
+        <div class="text-center ${cardClass}">
+            <img src="${match.avatar_url || '/static/img/default_avatar.png'}" 
+                 alt="${match.name}" 
+                 class="match-avatar mx-auto mb-4">
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">${match.name}</h3>
+            <p class="text-gray-600 mb-4">${match.bio || 'No bio provided'}</p>
+            ${match.pets.length > 0 ? `
+                <div class="match-pets">
+                    ${match.pets.map(pet => `
+                        <div class="match-pet">
+                            <img src="${pet.avatar || '/static/img/pet_logo.png'}" 
+                                 alt="${pet.name}" 
+                                 class="match-pet-avatar">
+                            <div class="match-pet-name">${pet.name}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+            ${statusHtml}
+            <div class="match-actions mt-4">
+                <button onclick="respondToMatch('skip')" 
+                        class="match-button skip" ${acceptDisabled ? 'disabled' : ''}>
+                    <span>⏭️</span> Skip
+                </button>
+                <button onclick="respondToMatch('accept')" 
+                        class="match-button accept" ${acceptDisabled ? 'disabled' : ''}>
+                    ${acceptText}
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Respond to a match
+function respondToMatch(response) {
+    if (!currentMatch) return;
+    fetch(`/api/matches/${currentMatch.id}/respond`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ response })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (response === 'accept' && data.matched) {
+                showNotification('It\'s a match! You can now start chatting.', 'success');
+                window.location.href = '/messages';
+            } else if (response === 'accept') {
+                // Mark as waiting in the UI
+                currentMatch.status = 'waiting';
+                displayMatch(currentMatch);
+            } else {
+                loadMatches();
+            }
+        } else {
+            // If already accepted, update UI to waiting
+            if (data.error && data.error.includes('already accepted')) {
+                currentMatch.status = 'waiting';
+                displayMatch(currentMatch);
+            }
+            showNotification(data.error || 'Failed to respond to match', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error responding to match:', error);
+        showNotification('Failed to respond to match', 'error');
+    });
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadMatches();
+});
+</script>
+{% endblock %} 
