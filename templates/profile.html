@@ -843,6 +843,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     updateLookingForDisplay();
     loadStatesAndCities();
+
+    // --- ADDED: Auto-load breeds for existing pets ---
+    const petType = document.getElementById('petType');
+    if (petType && petType.value) {
+        loadBreeds(true); // true = initial load
+    }
 });
 
 // Phone number validation functions
@@ -1003,25 +1009,24 @@ function checkVaccinationDates() {
 
 function loadBreeds(isInitialLoad = false) {
     const species = document.getElementById('petType').value;
-    if (!species) return;
+    if (!species) {
+        document.getElementById('breedSelect').innerHTML = '<option value="">Select species first</option>';
+        return;
+    }
 
+    // Remember current breed selection if it exists
     const breedSelect = document.getElementById('breedSelect');
-    breedSelect.innerHTML = '';
+    const currentBreed = breedSelect.value;
 
-    fetch(`/breeds?species=${species}`)
+    fetch(`/api/breeds/${species}`)
         .then(response => response.json())
-        .then(data => {
-            if (data.length > 0) {
-                breedSelect.innerHTML = '<option value="">Select breed</option>';
-                data.forEach(breed => {
-                    const option = document.createElement('option');
-                    option.value = breed;
-                    option.textContent = breed;
-                    breedSelect.appendChild(option);
-                });
-            } else {
-                breedSelect.innerHTML = '<option value="">No breeds found</option>';
-            }
+        .then(breeds => {
+            breedSelect.innerHTML = '<option value="">Select breed</option>' +
+                breeds.map(breed => {
+                    // Mark the option as selected if it matches the current breed
+                    const selected = (breed === currentBreed) ? 'selected' : '';
+                    return `<option value="${breed}" ${selected}>${breed}</option>`;
+                }).join('');
         })
         .catch(error => {
             console.error('Error loading breeds:', error);
@@ -1046,7 +1051,10 @@ function selectPet(petId) {
 function addNewPet() {
     // Clear current pet ID to indicate new pet
     currentPetId = null;
-    
+    if (document.getElementById('petId')) {
+        document.getElementById('petId').value = '';
+    }
+
     // Reset form fields
     document.getElementById('petName').value = '';
     document.getElementById('petType').value = '';
@@ -1060,26 +1068,43 @@ function addNewPet() {
     document.getElementById('vetClinic').value = '';
     document.getElementById('vetPhone').value = '';
     document.getElementById('vetAddress').value = '';
-    
-    // Reset avatar
-    document.getElementById('petAvatar').src = '/static/img/pet_logo.png';
-    document.getElementById('avatarUrl').value = '';
-    
+
+    // Bulletproof avatar reset
+    const defaultAvatar = '/static/img/pet_logo.png';
+    if (document.getElementById('petAvatar')) {
+        document.getElementById('petAvatar').src = defaultAvatar;
+    }
+    if (document.getElementById('avatarPreview')) {
+        document.getElementById('avatarPreview').src = defaultAvatar;
+    }
+    if (document.getElementById('avatarUrl')) {
+        document.getElementById('avatarUrl').value = '';
+    }
+
+    // Remove highlight from all pets
+    document.querySelectorAll('.pet-option').forEach(option => {
+        option.classList.remove('active');
+    });
+
     // Show first step
     document.querySelectorAll('.step').forEach(step => {
         step.classList.remove('active');
     });
-    document.getElementById('step1').classList.add('active');
-    
+    if (document.getElementById('step1')) {
+        document.getElementById('step1').classList.add('active');
+    }
+
     // Update UI to show we're adding a new pet
-    document.querySelector('.text-center h1').textContent = '🐾 Add New Pet 🐾';
-    document.querySelector('.text-center p').textContent = 'Tell us about your new furry (or scaly!) friend';
-    
+    const title = document.querySelector('.text-center h1');
+    if (title) title.textContent = '🐾 Add New Pet 🐾';
+    const subtitle = document.querySelector('.text-center p');
+    if (subtitle) subtitle.textContent = 'Tell us about your new furry (or scaly!) friend';
+
     // Show all steps
-    document.getElementById('basicInfoStep').classList.remove('hidden');
-    document.getElementById('avatarStep').classList.remove('hidden');
-    document.getElementById('healthStep').classList.remove('hidden');
-    
+    if (document.getElementById('basicInfoStep')) document.getElementById('basicInfoStep').classList.remove('hidden');
+    if (document.getElementById('avatarStep')) document.getElementById('avatarStep').classList.remove('hidden');
+    if (document.getElementById('healthStep')) document.getElementById('healthStep').classList.remove('hidden');
+
     // Update save button text
     const saveButton = document.querySelector('button[onclick="saveProfile()"]');
     if (saveButton) {
@@ -1088,7 +1113,64 @@ function addNewPet() {
 }
 
 function saveProfile() {
-    // Implementation of saveProfile function
+    // Gather pet info from the form
+    const petId = document.getElementById('petId') ? document.getElementById('petId').value : '';
+    const petName = document.getElementById('petName').value;
+    const species = document.getElementById('petType').value;
+    const breed = document.getElementById('breedSelect').value;
+    const ageYears = document.getElementById('ageYears').value;
+    const ageMonths = document.getElementById('ageMonths').value;
+    const weightRaw = document.getElementById('weight').value;
+    const weight = weightRaw ? parseFloat(weightRaw) : null;
+    const healthConditions = document.getElementById('healthConditions').value;
+    const lastCheckup = document.getElementById('lastCheckup').value;
+    const lastVaccinationDate = document.getElementById('lastVaccinationDate').value;
+    const vetClinic = document.getElementById('vetClinic') ? document.getElementById('vetClinic').value : '';
+    const vetPhone = document.getElementById('vetPhone') ? document.getElementById('vetPhone').value : '';
+    const vetAddress = document.getElementById('vetAddress') ? document.getElementById('vetAddress').value : '';
+    const avatar = document.getElementById('avatarUrl') ? document.getElementById('avatarUrl').value : '';
+
+    // Build the payload
+    const payload = {
+        pet_id: petId,
+        pet_name: petName,
+        species: species,
+        breed: breed,
+        age: {
+            years: ageYears ? parseInt(ageYears) : 0,
+            months: ageMonths ? parseInt(ageMonths) : 0
+        },
+        weight: weight,
+        health_conditions: healthConditions,
+        last_checkup: lastCheckup,
+        last_vaccination_date: lastVaccinationDate,
+        vet_clinic: vetClinic,
+        vet_phone: vetPhone,
+        vet_address: vetAddress,
+        avatar: avatar
+    };
+
+    fetch('/update_pet_profile', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Pet profile saved!', 'success');
+            // Optionally reload or redirect to update UI
+            window.location.reload();
+        } else {
+            showNotification(data.error || 'Failed to save pet profile', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving pet profile:', error);
+        showNotification('Failed to save pet profile', 'error');
+    });
 }
 
 function openAvatarOptions() {
@@ -1100,7 +1182,33 @@ function closeAvatarModal() {
 }
 
 function uploadAvatar() {
-    // Implementation of uploadAvatar function
+    // Trigger the hidden file input for pet avatar upload
+    const fileInput = document.getElementById('avatarUpload');
+    if (fileInput) {
+        fileInput.click();
+    }
+}
+
+// Add event listener to update avatar preview and hidden field when a file is selected
+if (document.getElementById('avatarUpload')) {
+    document.getElementById('avatarUpload').addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                // Update both avatar preview images if present
+                if (document.getElementById('petAvatar')) {
+                    document.getElementById('petAvatar').src = evt.target.result;
+                }
+                if (document.getElementById('avatarPreview')) {
+                    document.getElementById('avatarPreview').src = evt.target.result;
+                }
+                if (document.getElementById('avatarUrl')) {
+                    document.getElementById('avatarUrl').value = evt.target.result;
+                }
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
 }
 
 function openUserAvatarOptions() {
