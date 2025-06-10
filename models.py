@@ -29,6 +29,9 @@ class User(Base):
     city = Column(String(100))
     us_state = Column(String(2))
     looking_for = Column(ARRAY(String))
+    vet_name = Column(String(200))
+    vet_phone = Column(String(50))
+    vet_address = Column(Text)
 
     # Relationships
     pets = relationship("Pet", back_populates="user", cascade="all, delete-orphan")

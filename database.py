@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.declarative import declarative_base
 from models import Base
 from dotenv import load_dotenv, find_dotenv
+from sqlalchemy.sql import text
 
 # Load environment variables
 ENV_FILE = find_dotenv()
@@ -75,7 +76,7 @@ def get_db_session():
     try:
         db = SessionLocal()
         # Test the connection
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         return db
     except Exception as e:
         logger.error(f"Database session creation error: {e}")

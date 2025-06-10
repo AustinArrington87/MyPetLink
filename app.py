@@ -2047,6 +2047,9 @@ def update_user_profile():
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
+        # Debug logging
+        logger.info(f"Received profile update data: {data}")
+
         # Get user from database
         from models import User
         from database import get_db_session, close_db_session
@@ -2072,37 +2075,52 @@ def update_user_profile():
                 user.us_state = data['state']
             if 'looking_for' in data:
                 user.looking_for = data['looking_for']
+            if 'vet_name' in data:
+                user.vet_name = data['vet_name']
+            if 'vet_phone' in data:
+                user.vet_phone = data['vet_phone']
+            if 'vet_address' in data:
+                user.vet_address = data['vet_address']
+
+            # Debug logging
+            logger.info(f"Updating user with vet info - name: {user.vet_name}, phone: {user.vet_phone}, address: {user.vet_address}")
 
             # Handle avatar if provided
             if 'avatar' in data and data['avatar']:
                 try:
-                    # Extract base64 data
-                    avatar_data = data['avatar'].split(',')[1]
-                    avatar_bytes = base64.b64decode(avatar_data)
-                    
-                    # Create temporary file
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-                        temp_file.write(avatar_bytes)
-                        temp_path = temp_file.name
-                    
-                    # Upload to S3
-                    s3 = S3Storage()
-                    avatar_url = s3.upload_file(
-                        temp_path,
-                        str(user.id),  # pet_id parameter
-                        'user',        # file_type parameter
-                        'avatar',      # file_category parameter
-                        'avatar.png'   # filename parameter
-                    )
-                    
-                    # Update user's avatar URL
-                    user.avatar_url = avatar_url
-                    
-                    # Clean up temp file
-                    os.unlink(temp_path)
+                    avatar_data = data['avatar']
+                    if avatar_data.startswith('data:'):
+                        # Handle base64 image
+                        avatar_data = avatar_data.split(',')[1]
+                        avatar_bytes = base64.b64decode(avatar_data)
+                        
+                        # Create temporary file
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                            temp_file.write(avatar_bytes)
+                            temp_path = temp_file.name
+                        
+                        # Upload to S3
+                        s3 = S3Storage()
+                        avatar_url = s3.upload_file(
+                            temp_path,
+                            str(user.id),  # pet_id parameter
+                            'user',        # file_type parameter
+                            'avatar',      # file_category parameter
+                            'avatar.png'   # filename parameter
+                        )
+                        
+                        # Update user's avatar URL
+                        user.avatar_url = avatar_url
+                        
+                        # Clean up temp file
+                        os.unlink(temp_path)
+                    else:
+                        # It's already a URL, just update it
+                        user.avatar_url = avatar_data
                 except Exception as e:
                     logger.error(f"Error processing avatar: {e}")
-                    return jsonify({'error': 'Failed to process avatar'}), 500
+                    # Don't return error, just continue without updating avatar
+                    pass
 
             # Commit changes
             db.commit()
@@ -2116,6 +2134,9 @@ def update_user_profile():
             session['user_looking_for'] = user.looking_for
             session['user_avatar_url'] = user.avatar_url
             
+            # Debug logging
+            logger.info("Profile update successful")
+            
             return jsonify({
                 'success': True,
                 'message': 'Profile updated successfully',
@@ -2126,7 +2147,10 @@ def update_user_profile():
                     'state': user.us_state,
                     'bio': user.bio,
                     'looking_for': user.looking_for,
-                    'avatar_url': user.avatar_url
+                    'avatar_url': user.avatar_url,
+                    'vet_name': user.vet_name,
+                    'vet_phone': user.vet_phone,
+                    'vet_address': user.vet_address
                 }
             })
             
