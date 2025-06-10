@@ -40,7 +40,12 @@
                      alt="MyPetLink Logo" 
                      class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300 mb-2 sm:mb-0">
             </a>
-            <div class="flex gap-2 sm:gap-4 items-center overflow-x-auto whitespace-nowrap w-full sm:w-auto justify-end">
+            <!-- Hamburger for mobile -->
+            <button id="mobileMenuButton" class="sm:hidden flex items-center px-3 py-2 border rounded text-gray-600 border-gray-300 focus:outline-none" onclick="toggleMobileMenu()">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <!-- Desktop nav -->
+            <div class="hidden sm:flex gap-2 sm:gap-4 items-center overflow-x-auto whitespace-nowrap w-full sm:w-auto justify-end">
                 {% if is_authenticated %}
                     <a href="{{ url_for('profile') }}" 
                        class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center px-3 py-2 rounded-lg">
@@ -67,6 +72,28 @@
             </div>
         </div>
     </div>
+    <!-- Slide-in mobile menu -->
+    <div id="mobileMenu" class="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 transform -translate-x-full transition-transform duration-300 sm:hidden">
+        <div class="flex items-center justify-between px-4 py-4 border-b">
+            <a href="{{ url_for('home') }}">
+                <img src="{{ url_for('static', filename='img/pet_logo_text.png') }}" alt="MyPetLink Logo" class="h-8">
+            </a>
+            <button onclick="toggleMobileMenu()" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <nav class="flex flex-col px-4 py-4 space-y-2">
+            {% if is_authenticated %}
+                <a href="{{ url_for('profile') }}" class="flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"><span class="mr-2">🐾</span> Pet Profile</a>
+                <a href="{{ url_for('matches') }}" class="flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"><span class="mr-2">💝</span> Matches</a>
+                <a href="{{ url_for('messages') }}" class="flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"><span class="mr-2">💬</span> Messages</a>
+                <a href="{{ url_for('logout') }}" class="flex items-center px-3 py-2 rounded-lg text-red-500 hover:bg-red-50">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="flex items-center px-3 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600">Login / Sign Up</a>
+            {% endif %}
+        </nav>
+    </div>
+    <div id="mobileMenuOverlay" class="fixed inset-0 bg-black bg-opacity-30 z-40 hidden sm:hidden" onclick="toggleMobileMenu()"></div>
 
     <div class="container mx-auto px-4 py-8 flex-grow">
       {% block content %}{% endblock %}
@@ -114,6 +141,18 @@
       setTimeout(() => {
           notification.remove();
       }, 10000);
+    }
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const overlay = document.getElementById('mobileMenuOverlay');
+      if (menu.classList.contains('-translate-x-full')) {
+        menu.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+      } else {
+        menu.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+      }
     }
     </script>
   </body>
