@@ -549,7 +549,8 @@ def profile():
                              user_profile=user,
                              pets=pets,
                              active_pet=active_pet,
-                             is_first_pet=is_first_pet)
+                             is_first_pet=is_first_pet,
+                             is_authenticated=True)
                              
     except Exception as e:
         logger.error(f"Error in profile route: {e}")
