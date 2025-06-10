@@ -34,13 +34,13 @@
     <!-- Notification Container (top center, always present) -->
     <div id="notificationContainer" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md flex flex-col items-center space-y-2 pointer-events-none"></div>
     <div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="{{ url_for('home') }}">
                 <img src="{{ url_for('static', filename='img/pet_logo_text.png') }}" 
                      alt="MyPetLink Logo" 
                      class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300 mb-2 sm:mb-0">
             </a>
-            <div class="flex flex-wrap gap-2 sm:gap-4 items-center w-full sm:w-auto justify-end">
+            <div class="flex gap-2 sm:gap-4 items-center overflow-x-auto whitespace-nowrap w-full sm:w-auto justify-end">
                 {% if is_authenticated %}
                     <a href="{{ url_for('profile') }}" 
                        class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center px-3 py-2 rounded-lg">
