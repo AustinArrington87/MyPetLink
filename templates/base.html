@@ -33,39 +33,40 @@
   <body class="bg-gray-100 min-h-screen flex flex-col">
     <!-- Notification Container (top center, always present) -->
     <div id="notificationContainer" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md flex flex-col items-center space-y-2 pointer-events-none"></div>
-    <nav class="bg-white shadow-lg">
-      <div class="max-w-6xl mx-auto px-4">
-        <div class="flex justify-between">
-          <div class="flex space-x-7">
-            <div>
-              <a href="/" class="flex items-center py-4 px-2">
-                <span class="font-semibold text-gray-500 text-lg"
-                  >MyPetLink</span
-                >
-              </a>
+    <div class="fixed top-0 left-0 right-0 bg-white z-50 border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between">
+            <a href="{{ url_for('home') }}">
+                <img src="{{ url_for('static', filename='img/pet_logo_text.png') }}" 
+                     alt="MyPetLink Logo" 
+                     class="h-8 drop-shadow-md hover:drop-shadow-lg transition-all duration-300 mb-2 sm:mb-0">
+            </a>
+            <div class="flex flex-wrap gap-2 sm:gap-4 items-center w-full sm:w-auto justify-end">
+                {% if is_authenticated %}
+                    <a href="{{ url_for('profile') }}" 
+                       class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center px-3 py-2 rounded-lg">
+                        <span class="mr-1">🐾</span> Pet Profile
+                    </a>
+                    <a href="{{ url_for('matches') }}" 
+                       class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center px-3 py-2 rounded-lg">
+                        <span class="mr-1">💝</span> Matches
+                    </a>
+                    <a href="{{ url_for('messages') }}" 
+                       class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center px-3 py-2 rounded-lg">
+                        <span class="mr-1">💬</span> Messages
+                    </a>
+                    <a href="{{ url_for('logout') }}" 
+                       class="text-red-500 hover:text-red-700 transition-colors duration-200 px-3 py-2 rounded-lg">
+                        Logout
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" 
+                       class="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors duration-200 w-full sm:w-auto text-center">
+                        Login / Sign Up
+                    </a>
+                {% endif %}
             </div>
-          </div>
-          <div class="flex items-center space-x-3">
-            {% if is_authenticated %}
-            <a
-              href="/profile"
-              class="py-2 px-4 text-gray-500 hover:text-gray-700"
-              >Profile</a
-            >
-            <a href="/logout" class="py-2 px-4 text-red-500 hover:text-red-700"
-              >Logout</a
-            >
-            {% else %}
-            <a
-              href="/login"
-              class="py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >Login</a
-            >
-            {% endif %}
-          </div>
         </div>
-      </div>
-    </nav>
+    </div>
 
     <div class="container mx-auto px-4 py-8 flex-grow">
       {% block content %}{% endblock %}

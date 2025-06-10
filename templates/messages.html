@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<style>
+    .chat-card {
+        background-color: white;
+        background-image: 
+            radial-gradient(circle at 100% 100%, rgba(72, 187, 120, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 0% 0%, rgba(72, 187, 120, 0.05) 0%, transparent 50%);
+    }
+
+    .chat-message {
+        max-width: 70%;
+        margin-bottom: 1rem;
+    }
+
+    .chat-message.sent {
+        margin-left: auto;
+        background-color: #4299e1;
+        color: white;
+        border-radius: 1rem 1rem 0 1rem;
+    }
+
+    .chat-message.received {
+        margin-right: auto;
+        background-color: #f3f4f6;
+        color: #1f2937;
+        border-radius: 1rem 1rem 1rem 0;
+    }
+
+    .chat-input {
+        border: 2px solid #e5e7eb;
+        border-radius: 1rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s;
+    }
+
+    .chat-input:focus {
+        border-color: #4299e1;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+    }
+
+    .conversation-list {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+
+    .conversation-item {
+        transition: all 0.2s;
+    }
+
+    .conversation-item:hover {
+        background-color: #f9fafb;
+    }
+
+    .conversation-item.active {
+        background-color: #ebf5ff;
+    }
+</style>
+
+<div class="max-w-7xl mx-auto mt-20 px-4">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Conversations List -->
+        <div class="lg:col-span-1">
+            <div class="chat-card rounded-2xl p-6 shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-green-800 flex items-center">
+                    <span class="text-2xl mr-2">💬</span> Conversations
+                </h2>
+                
+                <div id="conversations-list" class="conversation-list space-y-2">
+                    <!-- Conversations will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="lg:col-span-2">
+            <div class="chat-card rounded-2xl p-6 shadow-lg">
+                <div id="no-chat-selected" class="text-center py-12">
+                    <div class="text-6xl mb-4">💭</div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Select a Conversation</h3>
+                    <p class="text-gray-500">Choose a conversation from the left to start chatting</p>
+                </div>
+
+                <div id="chat-container" class="hidden">
+                    <!-- Chat Header -->
+                    <div class="flex items-center mb-6 pb-4 border-b">
+                        <img id="chat-avatar" src="" alt="" class="w-12 h-12 rounded-full mr-4">
+                        <div>
+                            <h3 id="chat-name" class="text-lg font-semibold text-gray-800"></h3>
+                            <p id="chat-status" class="text-sm text-gray-500">Online</p>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <div id="chat-messages" class="h-[400px] overflow-y-auto mb-4 space-y-4">
+                        <!-- Messages will be populated here -->
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div class="border-t pt-4">
+                        <form id="chat-form" class="flex gap-2">
+                            <input type="text" 
+                                   id="chat-input" 
+                                   class="flex-1 chat-input"
+                                   placeholder="Type your message...">
+                            <button type="submit" 
+                                    class="bg-blue-500 text-white px-6 py-2 rounded-xl hover:bg-blue-600 transform transition-all hover:scale-105 shadow-md">
+                                Send
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentChatUser = null;
+
+// Load conversations
+function loadConversations() {
+    fetch('/api/chats')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('conversations-list');
+            container.innerHTML = '';
+            
+            if (data.conversations.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-gray-500">No active conversations</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            data.conversations.forEach(conv => {
+                const conversationDiv = document.createElement('div');
+                conversationDiv.className = 'conversation-item bg-white rounded-xl p-4 shadow-sm cursor-pointer';
+                conversationDiv.onclick = () => openChat(conv);
+                
+                // Get last message
+                const lastMessage = conv.messages[0] || { message: 'No messages yet' };
+                
+                conversationDiv.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <img src="${conv.avatar_url || '/static/img/default_avatar.png'}" 
+                             alt="${conv.name}" 
+                             class="w-12 h-12 rounded-full object-cover">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-medium text-gray-800 truncate">${conv.name}</h4>
+                            <p class="text-sm text-gray-500 truncate">${lastMessage.message}</p>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(conversationDiv);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading conversations:', error);
+            showNotification('Failed to load conversations', 'error');
+        });
+}
+
+// Open chat with a user
+function openChat(conversation) {
+    currentChatUser = {
+        id: conversation.user_id,
+        name: conversation.name,
+        avatar_url: conversation.avatar_url
+    };
+    
+    // Update active conversation in list
+    document.querySelectorAll('.conversation-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.querySelector('h4').textContent === conversation.name) {
+            item.classList.add('active');
+        }
+    });
+    
+    // Update chat header
+    document.getElementById('chat-avatar').src = conversation.avatar_url || '/static/img/default_avatar.png';
+    document.getElementById('chat-name').textContent = conversation.name;
+    
+    // Show chat container
+    document.getElementById('no-chat-selected').classList.add('hidden');
+    document.getElementById('chat-container').classList.remove('hidden');
+    
+    // Load messages
+    const messagesContainer = document.getElementById('chat-messages');
+    messagesContainer.innerHTML = '';
+    
+    conversation.messages.reverse().forEach(message => {
+        const isSent = message.sender_id === '{{ session.db_user_id }}';
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${isSent ? 'sent' : 'received'} p-3`;
+        messageDiv.textContent = message.message;
+        messagesContainer.appendChild(messageDiv);
+    });
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Send message
+document.getElementById('chat-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!currentChatUser) return;
+    
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    fetch(`/api/chats/${currentChatUser.id}/send`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add message to chat
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message sent p-3';
+            messageDiv.textContent = message;
+            messagesContainer.appendChild(messageDiv);
+            
+            // Clear input and scroll to bottom
+            input.value = '';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Reload conversations to update last message
+            loadConversations();
+        } else {
+            showNotification(data.error || 'Failed to send message', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error sending message:', error);
+        showNotification('Failed to send message', 'error');
+    });
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadConversations();
+    
+    // Refresh conversations every 30 seconds
+    setInterval(loadConversations, 30000);
+});
+</script>
+{% endblock %} 

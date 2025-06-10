@@ -35,6 +35,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from jose import jwt
 import tempfile
 from storage import S3Storage
+from sqlalchemy import text
 
 # Configure logging
 logging.basicConfig(
@@ -2163,6 +2164,257 @@ def update_user_profile():
             
     except Exception as e:
         logger.error(f"Error in update_user_profile: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/messages')
+@requires_auth_web
+def messages():
+    user_name = session.get('user_name', 'Guest')
+    is_authenticated = 'profile' in session
+    return render_template('messages.html', is_authenticated=is_authenticated, user_name=user_name)
+
+@app.route('/matches')
+@requires_auth_web
+def matches():
+    user_name = session.get('user_name', 'Guest')
+    is_authenticated = 'profile' in session
+    return render_template('matches.html', is_authenticated=is_authenticated, user_name=user_name)
+
+@app.route('/api/matches')
+@requires_auth_api
+def get_matches():
+    from models import User, Pet
+    from database import get_db_session, close_db_session
+    import uuid
+    db = get_db_session()
+    try:
+        user_id = session.get('db_user_id')
+        if not user_id:
+            return jsonify({'error': 'User not found'}), 404
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        city = user.city
+        state = user.us_state
+        looking_for = set(user.looking_for or [])
+        # Query for other users in the same city and state, with overlapping looking_for
+        potential_matches = db.query(User).filter(
+            User.id != user.id,
+            User.city == city,
+            User.us_state == state,
+            User.looking_for != None
+        ).all()
+        matches = []
+        for match in potential_matches:
+            if not match.looking_for:
+                continue
+            if not looking_for.intersection(set(match.looking_for)):
+                continue
+            # Always use sorted user IDs for user_1 and user_2
+            user_ids = sorted([str(user.id), str(match.id)])
+            user_1_id, user_2_id = user_ids
+            sql = text("""
+                SELECT * FROM user_matches WHERE user_1 = :u1 AND user_2 = :u2
+            """)
+            result = db.execute(sql, {"u1": user_1_id, "u2": user_2_id}).mappings().fetchone()
+            status = None
+            if result:
+                if result['user_1_match'] and result['user_2_match']:
+                    continue  # fully matched, don't show
+                # If current user is user_1 and has accepted, but user_2 hasn't
+                if result['user_1'] == str(user.id) and result['user_1_match'] and not result['user_2_match']:
+                    status = 'waiting'
+                # If current user is user_2 and has accepted, but user_1 hasn't
+                elif result['user_2'] == str(user.id) and result['user_2_match'] and not result['user_1_match']:
+                    status = 'waiting'
+                # Otherwise, show as a normal match (can accept)
+            else:
+                insert_sql = text("""
+                    INSERT INTO user_matches (user_1, user_2, user_1_match, user_2_match)
+                    VALUES (:u1, :u2, false, false)
+                    ON CONFLICT DO NOTHING
+                """)
+                db.execute(insert_sql, {"u1": user_1_id, "u2": user_2_id})
+                db.commit()
+            pets = [pet.to_dict() for pet in match.pets]
+            matches.append({
+                'id': str(match.id),
+                'name': match.name,
+                'avatar_url': match.avatar_url,
+                'bio': match.bio,
+                'pets': pets,
+                'status': status
+            })
+        return jsonify({'matches': matches})
+    except Exception as e:
+        print(f"Error getting matches: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        close_db_session(db)
+
+@app.route('/api/matches/<match_id>/respond', methods=['POST'])
+@requires_auth_api
+def respond_to_match(match_id):
+    from database import get_db_session, close_db_session
+    import uuid
+    from sqlalchemy import text
+    db = get_db_session()
+    try:
+        user_id = session.get('db_user_id')
+        if not user_id:
+            return jsonify({'error': 'User not found'}), 404
+        data = request.get_json()
+        response = data.get('response')
+        if response not in ['accept', 'skip']:
+            return jsonify({'error': 'Invalid response'}), 400
+        # Always use sorted user IDs for user_1 and user_2
+        user_ids = sorted([str(user_id), str(match_id)])
+        user_1_id, user_2_id = user_ids
+        sql = text("""
+            SELECT * FROM user_matches WHERE user_1 = :u1 AND user_2 = :u2
+        """)
+        result = db.execute(sql, {"u1": user_1_id, "u2": user_2_id}).mappings().fetchone()
+        if not result:
+            insert_sql = text("""
+                INSERT INTO user_matches (user_1, user_2, user_1_match, user_2_match)
+                VALUES (:u1, :u2, false, false)
+                ON CONFLICT DO NOTHING
+            """)
+            db.execute(insert_sql, {"u1": user_1_id, "u2": user_2_id})
+            db.commit()
+            result = db.execute(sql, {"u1": user_1_id, "u2": user_2_id}).mappings().fetchone()
+        # Determine which column to update based on the current user (cast all to str)
+        user_id_str = str(user_id)
+        user_1_str = str(result['user_1'])
+        user_2_str = str(result['user_2'])
+        if user_1_str == user_id_str:
+            match_col = 'user_1_match'
+            already_accepted = result['user_1_match']
+        elif user_2_str == user_id_str:
+            match_col = 'user_2_match'
+            already_accepted = result['user_2_match']
+        else:
+            # Log for debugging
+            print(f"DEBUG: user_id={user_id_str}, user_1={user_1_str}, user_2={user_2_str}")
+            return jsonify({'error': 'User not part of this match.'}), 400
+        if already_accepted and response == 'accept':
+            return jsonify({'error': 'You have already accepted this match.'}), 400
+        update_sql = text(f"""
+            UPDATE user_matches SET {match_col} = :val WHERE user_1 = :user1 AND user_2 = :user2
+        """)
+        db.execute(update_sql, {"val": response == 'accept', "user1": user_1_id, "user2": user_2_id})
+        db.commit()
+        new_result = db.execute(sql, {"u1": user_1_id, "u2": user_2_id}).mappings().fetchone()
+        matched = new_result['user_1_match'] and new_result['user_2_match']
+        return jsonify({'success': True, 'matched': matched})
+    except Exception as e:
+        print(f"Error responding to match: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        close_db_session(db)
+
+@app.route('/api/chats')
+@requires_auth_api
+def get_chats():
+    try:
+        user_id = session.get('db_user_id')
+        if not user_id:
+            return jsonify({'error': 'User not found'}), 404
+        from sqlalchemy import text
+        from models import User
+        from database import get_db_session, close_db_session
+        import uuid
+        db = get_db_session()
+        try:
+            # Find all mutual matches for this user
+            sql = text("""
+                SELECT * FROM user_matches WHERE user_1_match = true AND user_2_match = true AND (user_1 = :uid OR user_2 = :uid)
+            """)
+            matches = db.execute(sql, {"uid": str(user_id)}).mappings().fetchall()
+            conversations = []
+            for match in matches:
+                # Determine the other user's ID
+                if str(match['user_1']) == str(user_id):
+                    other_id = str(match['user_2'])
+                else:
+                    other_id = str(match['user_1'])
+                # Get other user's info
+                other_user = db.query(User).filter(User.id == other_id).first()
+                if not other_user:
+                    continue
+                # Get chat messages (if any)
+                chat_sql = text("""
+                    SELECT * FROM user_chats WHERE 
+                        (from_id = :u1 AND to_id = :u2) OR (from_id = :u2 AND to_id = :u1)
+                    ORDER BY created_at ASC
+                """)
+                chat_msgs = db.execute(chat_sql, {"u1": str(user_id), "u2": other_id}).mappings().fetchall()
+                messages = [
+                    {
+                        'sender_id': str(msg['from_id']),
+                        'recipient_id': str(msg['to_id']),
+                        'message': msg['message'],
+                        'timestamp': msg['created_at'].isoformat() if msg['created_at'] else None
+                    }
+                    for msg in chat_msgs
+                ]
+                conversations.append({
+                    'user_id': other_id,
+                    'name': other_user.name,
+                    'avatar_url': other_user.avatar_url,
+                    'messages': messages
+                })
+            return jsonify({'conversations': conversations})
+        except Exception as e:
+            print(f"Error getting chats: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+        finally:
+            close_db_session(db)
+    except Exception as e:
+        print(f"Error getting chats: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chats/<user_id>/send', methods=['POST'])
+@requires_auth_api
+def send_message(user_id):
+    try:
+        from sqlalchemy import text
+        import uuid
+        from datetime import datetime
+        db = None
+        try:
+            db = __import__('database').get_db_session()
+            sender_id = session.get('db_user_id')
+            if not sender_id:
+                return jsonify({'error': 'User not found'}), 404
+            data = request.get_json()
+            message = data.get('message')
+            if not message:
+                return jsonify({'error': 'Message is required'}), 400
+            # Insert the message into user_chats
+            insert_sql = text("""
+                INSERT INTO user_chats (message_id, from_id, to_id, message, created_at)
+                VALUES (:msg_id, :from_id, :to_id, :msg, :created_at)
+            """)
+            db.execute(insert_sql, {
+                'msg_id': str(uuid.uuid4()),
+                'from_id': str(sender_id),
+                'to_id': str(user_id),
+                'msg': message,
+                'created_at': datetime.utcnow()
+            })
+            db.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            if db:
+                db.rollback()
+            print(f"Error sending message: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+        finally:
+            if db:
+                __import__('database').close_db_session(db)
+    except Exception as e:
+        print(f"Error sending message: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
