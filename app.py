@@ -558,6 +558,48 @@ def profile():
     finally:
         close_db_session(db)
 
+@app.route('/dashboard')
+@requires_auth_web
+def dashboard():
+    from models import User
+    from database import get_db_session, close_db_session
+    
+    db = get_db_session()
+    try:
+        user = db.query(User).filter(User.id == session['db_user_id']).first()
+        if not user:
+            return redirect(url_for('login'))
+            
+        pets_count = len(user.pets)
+        member_since = user.created_at.year if user.created_at else 2024
+        
+        # Hardcoded stats for now
+        stats = {
+            'points': 100,
+            'pets': pets_count,
+            'badges': 0,
+            'member_since': member_since
+        }
+        
+        # Find a pet with a photo to display
+        pet_with_photo = None
+        for pet in user.pets:
+            if pet.avatar_url:
+                pet_with_photo = pet
+                break
+
+        return render_template('dashboard.html',
+                             user_profile=user,
+                             stats=stats,
+                             pet_with_photo=pet_with_photo,
+                             is_authenticated=True)
+                             
+    except Exception as e:
+        logger.error(f"Error in dashboard route: {e}")
+        return redirect(url_for('home'))
+    finally:
+        close_db_session(db)
+
 @app.route('/update_pet_profile', methods=['POST'])
 @requires_auth_api
 def update_pet_profile():
