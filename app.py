@@ -2222,13 +2222,19 @@ def get_matches():
             if result:
                 if result['user_1_match'] and result['user_2_match']:
                     continue  # fully matched, don't show
+
+                # Check if current user has skipped this match
+                if str(result['user_1']) == str(user.id) and result['user_1_match'] is False:
+                    continue
+                if str(result['user_2']) == str(user.id) and result['user_2_match'] is False:
+                    continue
+
                 # If current user is user_1 and has accepted, but user_2 hasn't
-                if result['user_1'] == str(user.id) and result['user_1_match'] and not result['user_2_match']:
+                if str(result['user_1']) == str(user.id) and result['user_1_match'] and not result['user_2_match']:
                     status = 'waiting'
                 # If current user is user_2 and has accepted, but user_1 hasn't
-                elif result['user_2'] == str(user.id) and result['user_2_match'] and not result['user_1_match']:
+                elif str(result['user_2']) == str(user.id) and result['user_2_match'] and not result['user_1_match']:
                     status = 'waiting'
-                # Otherwise, show as a normal match (can accept)
             else:
                 insert_sql = text("""
                     INSERT INTO user_matches (user_1, user_2, user_1_match, user_2_match)
