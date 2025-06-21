@@ -29,6 +29,7 @@
       href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
   </head>
   <body class="bg-gray-100 min-h-screen flex flex-col">
     <!-- Notification Container (top center, always present) -->
@@ -47,9 +48,13 @@
             <!-- Desktop nav -->
             <div class="hidden sm:flex gap-2 sm:gap-4 items-center overflow-x-auto whitespace-nowrap w-full sm:w-auto justify-end">
                 {% if is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" 
+                       class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center px-3 py-2 rounded-lg">
+                        <span class="mr-1">🏠</span> Dashboard
+                    </a>
                     <a href="{{ url_for('profile') }}" 
                        class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center px-3 py-2 rounded-lg">
-                        <span class="mr-1">🐾</span> Pet Profile
+                        <span class="mr-1">🐾</span> Profile
                     </a>
                     <a href="{{ url_for('matches') }}" 
                        class="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center px-3 py-2 rounded-lg">
@@ -84,7 +89,8 @@
         </div>
         <nav class="flex flex-col px-4 py-4 space-y-2">
             {% if is_authenticated %}
-                <a href="{{ url_for('profile') }}" class="flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"><span class="mr-2">🐾</span> Pet Profile</a>
+                <a href="{{ url_for('dashboard') }}" class="flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"><span class="mr-2">🏠</span> Dashboard</a>
+                <a href="{{ url_for('profile') }}" class="flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"><span class="mr-2">🐾</span> Profile</a>
                 <a href="{{ url_for('matches') }}" class="flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"><span class="mr-2">💝</span> Matches</a>
                 <a href="{{ url_for('messages') }}" class="flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100"><span class="mr-2">💬</span> Messages</a>
                 <a href="{{ url_for('logout') }}" class="flex items-center px-3 py-2 rounded-lg text-red-500 hover:bg-red-50">Logout</a>
