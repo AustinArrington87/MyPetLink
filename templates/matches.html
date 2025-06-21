@@ -102,7 +102,8 @@
 </div>
 
 <script>
-let currentMatch = null;
+let allMatches = [];
+let currentMatchIndex = -1;
 
 // Load potential matches
 function loadMatches() {
@@ -110,20 +111,22 @@ function loadMatches() {
         .then(response => response.json())
         .then(data => {
             const container = document.getElementById('matches-container');
+            allMatches = data.matches;
+            currentMatchIndex = 0;
             
-            if (data.matches.length === 0) {
+            if (allMatches.length === 0) {
                 container.innerHTML = `
                     <div class="text-center py-12">
                         <div class="text-6xl mb-4">🐈</div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-2">No Matches Found</h3>
-                        <p class="text-gray-500">We couldn't find any pet parents matching your preferences</p>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-2">No More Matches</h3>
+                        <p class="text-gray-500">You've seen everyone! Check back later for new pet parents.</p>
                     </div>
                 `;
                 return;
             }
             
             // Display the first match
-            displayMatch(data.matches[0]);
+            displayMatch(allMatches[currentMatchIndex]);
         })
         .catch(error => {
             console.error('Error loading matches:', error);
@@ -131,14 +134,33 @@ function loadMatches() {
         });
 }
 
+// Show the next match in the queue
+function showNextMatch() {
+    currentMatchIndex++;
+    if (currentMatchIndex < allMatches.length) {
+        displayMatch(allMatches[currentMatchIndex]);
+    } else {
+        const container = document.getElementById('matches-container');
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">🎉</div>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">That's Everyone!</h3>
+                <p class="text-gray-500">You've seen all available matches. Check back later for new ones!</p>
+            </div>
+        `;
+    }
+}
+
 // Display a match
 function displayMatch(match) {
-    currentMatch = match;
+    if (!match) return showNextMatch(); // If match is undefined, move on
+
     const container = document.getElementById('matches-container');
     let statusHtml = '';
     let acceptDisabled = false;
     let acceptText = '<span>💝</span> Accept';
     let cardClass = '';
+    
     if (match.status === 'waiting') {
         statusHtml = `
             <div class="flex flex-col items-center justify-center my-6">
@@ -151,6 +173,7 @@ function displayMatch(match) {
         acceptText = '<span>✅</span> Accepted';
         cardClass = 'opacity-80';
     }
+    
     container.innerHTML = `
         <div class="text-center ${cardClass}">
             <img src="${match.avatar_url || '/static/img/default_avatar.png'}" 
@@ -162,7 +185,7 @@ function displayMatch(match) {
                 <div class="match-pets">
                     ${match.pets.map(pet => `
                         <div class="match-pet">
-                            <img src="${pet.avatar || '/static/img/pet_logo.png'}" 
+                            <img src="${pet.avatar_url || '/static/img/pet_logo.png'}" 
                                  alt="${pet.name}" 
                                  class="match-pet-avatar">
                             <div class="match-pet-name">${pet.name}</div>
@@ -173,7 +196,7 @@ function displayMatch(match) {
             ${statusHtml}
             <div class="match-actions mt-4">
                 <button onclick="respondToMatch('skip')" 
-                        class="match-button skip" ${acceptDisabled ? 'disabled' : ''}>
+                        class="match-button skip">
                     <span>⏭️</span> Skip
                 </button>
                 <button onclick="respondToMatch('accept')" 
@@ -187,7 +210,13 @@ function displayMatch(match) {
 
 // Respond to a match
 function respondToMatch(response) {
+    const currentMatch = allMatches[currentMatchIndex];
     if (!currentMatch) return;
+
+    // Disable buttons to prevent double-clicking
+    const buttons = document.querySelectorAll('.match-button');
+    buttons.forEach(button => button.disabled = true);
+
     fetch(`/api/matches/${currentMatch.id}/respond`, {
         method: 'POST',
         headers: {
@@ -195,31 +224,28 @@ function respondToMatch(response) {
         },
         body: JSON.stringify({ response })
     })
-    .then(response => response.json())
+    .then(res => {
+        if (!res.ok) {
+            // Get error json to show in notification
+            return res.json().then(err => { throw new Error(err.error) });
+        }
+        return res.json();
+    })
     .then(data => {
         if (data.success) {
             if (response === 'accept' && data.matched) {
                 showNotification('It\'s a match! You can now start chatting.', 'success');
-                window.location.href = '/messages';
-            } else if (response === 'accept') {
-                // Mark as waiting in the UI
-                currentMatch.status = 'waiting';
-                displayMatch(currentMatch);
+                setTimeout(() => window.location.href = '/messages', 1000);
             } else {
-                loadMatches();
+                showNextMatch();
             }
-        } else {
-            // If already accepted, update UI to waiting
-            if (data.error && data.error.includes('already accepted')) {
-                currentMatch.status = 'waiting';
-                displayMatch(currentMatch);
-            }
-            showNotification(data.error || 'Failed to respond to match', 'error');
         }
     })
     .catch(error => {
         console.error('Error responding to match:', error);
-        showNotification('Failed to respond to match', 'error');
+        showNotification(error.message || 'Failed to respond to match', 'error');
+        // Re-enable buttons if there was an error
+        buttons.forEach(button => button.disabled = false);
     });
 }
 
